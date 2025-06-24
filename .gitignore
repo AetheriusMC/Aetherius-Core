@@ -1,8 +1,12 @@
-# Python
+# Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
+
+# C extensions
 *.so
+
+# Distribution / packaging
 .Python
 build/
 develop-eggs/
@@ -22,17 +26,120 @@ share/python-wheels/
 *.egg
 MANIFEST
 
-# Virtual Environment
-venv/
-.venv/
-ENV/
-env/
+# PyInstaller
+*.manifest
+*.spec
 
-# IDE
-.vscode/
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
+
+# Translations
+*.mo
+*.pot
+
+# Django stuff:
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Flask stuff:
+instance/
+.webassets-cache
+
+# Scrapy stuff:
+.scrapy
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+.pybuilder/
+target/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# pyenv
+.python-version
+
+# pipenv
+Pipfile.lock
+
+# poetry
+poetry.lock
+
+# pdm
+.pdm.toml
+
+# PEP 582
+__pypackages__/
+
+# Celery stuff
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath parsed files
+*.sage.py
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# pytype static type analyzer
+.pytype/
+
+# Cython debug symbols
+cython_debug/
+
+# PyCharm
 .idea/
-*.swp
-*.swo
+
+# VSCode
+.vscode/
 
 # OS
 .DS_Store
@@ -43,17 +150,18 @@ env/
 ehthumbs.db
 Thumbs.db
 
-# Minecraft Server Files
+# Aetherius specific
 server/
 logs/
-*.log
-*.log.*
-
-# Configuration that might contain sensitive data
 config.yaml
+*.jar
+*.log.*
 
 # Components plugins (as requested)
 components/
+
+# Plugin data
+plugins/
 
 # Player data and world data
 world/
@@ -68,7 +176,6 @@ playerdata/
 .cache/
 
 # Build artifacts
-*.jar
 *.class
 
 # Node modules (for any frontend components)
@@ -78,8 +185,10 @@ yarn-debug.log*
 yarn-error.log*
 
 # Environment variables
-.env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+
+# Claude settings
+.claude/
