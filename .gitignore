@@ -157,11 +157,11 @@ config.yaml
 *.jar
 *.log.*
 
-# Components plugins (as requested)
-components/
-
-# Plugin data
+# Plugin and component data (user content)
 plugins/
+/components/
+
+# Core aetherius/components module should be included
 
 # Player data and world data
 world/
@@ -192,3 +192,14 @@ yarn-error.log*
 
 # Claude settings
 .claude/
+
+# Roo configuration
+.roo/
+
+# Test coverage
+htmlcov/
+.coverage
+
+# Development files
+*.orig
+*.rej
