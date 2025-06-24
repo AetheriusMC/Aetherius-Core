@@ -1,0 +1,10 @@
+{
+  "loaded": [
+    "hello_world",
+    "player_tracker"
+  ],
+  "enabled": [
+    "hello_world",
+    "player_tracker"
+  ]
+}

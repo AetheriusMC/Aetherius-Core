@@ -1,0 +1,146 @@
+# Aetherius Log Parsing Rules Configuration
+# This file defines custom patterns for parsing Minecraft server logs
+
+patterns:
+  # Extended player join patterns for different server types
+  - name: "player_join_bukkit"
+    pattern: "(?P<player_name>\\w+)\\[/(?P<ip_address>[0-9.]+):(?P<port>\\d+)\\] logged in with entity id \\d+"
+    event_type: "player_join"
+    field_mapping:
+      player_name: "player_name"
+      ip_address: "ip_address"
+
+  - name: "player_join_forge"
+    pattern: "\\[Server thread/INFO\\] \\[minecraft/PlayerList\\]: (?P<player_name>\\w+)\\[/(?P<ip_address>[0-9.]+):(?P<port>\\d+)\\] logged in"
+    event_type: "player_join"
+    field_mapping:
+      player_name: "player_name"
+      ip_address: "ip_address"
+
+  # Extended chat patterns
+  - name: "player_chat_with_prefix"
+    pattern: "\\[(?P<prefix>[^\\]]+)\\] <(?P<player_name>\\w+)> (?P<message>.+)"
+    event_type: "player_chat"
+    field_mapping:
+      player_name: "player_name"
+      message: "message"
+      prefix: "channel"
+
+  - name: "player_whisper"
+    pattern: "(?P<sender>\\w+) whispers to (?P<receiver>\\w+): (?P<message>.+)"
+    event_type: "player_chat"
+    field_mapping:
+      sender: "player_name"
+      message: "message"
+      receiver: "channel"
+
+  # Advanced death patterns
+  - name: "player_death_pvp"
+    pattern: "(?P<player_name>\\w+) was slain by (?P<killer>\\w+) using \\[(?P<weapon>[^\\]]+)\\]"
+    event_type: "player_death"
+    field_mapping:
+      player_name: "player_name"
+      killer: "killer"
+      weapon: "death_message"
+
+  - name: "player_death_environment"
+    pattern: "(?P<player_name>\\w+) (?P<death_type>fell from a high place|drowned|burned to death|starved to death|suffocated in a wall|was blown up by (?P<mob>\\w+))"
+    event_type: "player_death"
+    field_mapping:
+      player_name: "player_name"
+      death_type: "death_message"
+
+  # Server performance patterns
+  - name: "memory_warning"
+    pattern: "\\[WARN\\] Memory usage is high: (?P<used>\\d+)MB/(?P<total>\\d+)MB \\((?P<percentage>\\d+)%\\)"
+    event_type: "lag_spike"
+    field_mapping:
+      percentage: "duration"
+      used: "severity"
+
+  - name: "chunk_loading_lag"
+    pattern: "Chunk loading is taking (?P<time>\\d+)ms, which is longer than expected"
+    event_type: "lag_spike"
+    field_mapping:
+      time: "duration"
+
+  # Plugin-specific patterns
+  - name: "essentials_teleport"
+    pattern: "\\[Essentials\\] (?P<player_name>\\w+) teleported to (?P<target>\\w+)"
+    event_type: "log_line"
+    field_mapping:
+      player_name: "message"
+
+  - name: "worldguard_region_enter"
+    pattern: "\\[WorldGuard\\] (?P<player_name>\\w+) entered region '(?P<region>[^']+)'"
+    event_type: "log_line"
+    field_mapping:
+      player_name: "message"
+
+  # Economy patterns (if using Vault/Economy plugins)
+  - name: "economy_transaction"
+    pattern: "\\[Economy\\] (?P<player_name>\\w+) (?P<action>paid|received) \\$(?P<amount>[0-9.]+) (?P<direction>to|from) (?P<target>\\w+)"
+    event_type: "log_line"
+    field_mapping:
+      player_name: "message"
+
+  # Ban/kick patterns
+  - name: "player_kicked"
+    pattern: "(?P<player_name>\\w+) was kicked from the server: (?P<reason>.+)"
+    event_type: "player_leave"
+    field_mapping:
+      player_name: "player_name"
+      reason: "leave_reason"
+
+  - name: "player_banned"
+    pattern: "(?P<player_name>\\w+) was banned by (?P<admin>\\w+): (?P<reason>.+)"
+    event_type: "player_leave"
+    field_mapping:
+      player_name: "player_name"
+      reason: "leave_reason"
+
+  # Achievement/Advancement patterns for older versions
+  - name: "player_achievement_old"
+    pattern: "(?P<player_name>\\w+) has just earned the achievement \\[(?P<achievement>[^\\]]+)\\]"
+    event_type: "player_advancement"
+    field_mapping:
+      player_name: "player_name"
+      achievement: "advancement_title"
+
+  # Error patterns
+  - name: "plugin_error"
+    pattern: "\\[(?P<plugin>[^\\]]+)\\] \\[ERROR\\] (?P<error_message>.+)"
+    event_type: "plugin_error"
+    field_mapping:
+      plugin: "plugin_name"
+      error_message: "error_message"
+
+  - name: "java_exception"
+    pattern: "(?P<exception>\\w+Exception): (?P<message>.+)"
+    event_type: "plugin_error"
+    field_mapping:
+      exception: "error_type"
+      message: "error_message"
+
+# Pattern priorities (higher number = higher priority)
+priorities:
+  player_join_bukkit: 10
+  player_join_forge: 9
+  player_join_vanilla: 8
+  player_chat_with_prefix: 10
+  player_whisper: 9
+  player_chat: 8
+
+# Global settings
+settings:
+  # Whether to create UnknownLogEvent for unparsed lines
+  create_unknown_events: true
+  
+  # Maximum number of patterns to try per line (0 = no limit)
+  max_patterns_per_line: 20
+  
+  # Whether to stop at first match or try all patterns
+  stop_at_first_match: true
+  
+  # Log level for parser debugging
+  parser_log_level: "INFO"
