@@ -3,9 +3,12 @@
 import asyncio
 import inspect
 import logging
-from collections import defaultdict
+import json
+from collections import defaultdict, deque
 from functools import wraps
 from typing import Any, Callable, Dict, List, Optional, Set, Type, TypeVar, Union
+from datetime import datetime, timedelta
+from dataclasses import dataclass
 
 from .events import BaseEvent, EventPriority
 
@@ -57,10 +60,21 @@ class EventManager:
     """
     
     def __init__(self):
+        # 原有初始化
         self._listeners: Dict[Type[BaseEvent], List[EventListener]] = defaultdict(list)
         self._global_listeners: List[EventListener] = []
         self._event_stats: Dict[str, int] = defaultdict(int)
         self._running = True
+        
+        # Web组件扩展
+        self._event_history: deque = deque(maxlen=1000)  # 事件历史记录
+        self._web_subscribers: Dict[str, Set[str]] = defaultdict(set)  # Web订阅者
+        self._real_time_events: Set[str] = set()  # 实时事件类型
+        self._event_filters: Dict[str, Callable] = {}  # 事件过滤器
+        
+        # 性能监控
+        self._event_timing: Dict[str, List[float]] = defaultdict(list)
+        self._slow_event_threshold = 1.0  # 慢事件阈值（秒）
     
     def register_listener(
         self,
@@ -241,6 +255,326 @@ class EventManager:
         """Shutdown the event manager."""
         self._running = False
         logger.info("Event manager shutdown")
+    
+    def add_to_history(self, event: BaseEvent, processing_time: float = None):
+        """
+        将事件添加到历史记录
+        
+        Args:
+            event: 事件对象
+            processing_time: 处理时间（秒）
+        """
+        event_data = {
+            'timestamp': datetime.now().isoformat(),
+            'event_type': event.__class__.__name__,
+            'event_data': self._serialize_event_data(event),
+            'processing_time': processing_time,
+            'source': getattr(event, 'source', None)
+        }
+        
+        self._event_history.append(event_data)
+        
+        # 记录处理时间
+        if processing_time is not None:
+            self._event_timing[event.__class__.__name__].append(processing_time)
+            
+            # 检查慢事件
+            if processing_time > self._slow_event_threshold:
+                logger.warning(f"Slow event detected: {event.__class__.__name__} took {processing_time:.3f}s")
+    
+    def _serialize_event_data(self, event: BaseEvent) -> Dict[str, Any]:
+        """
+        序列化事件数据用于存储
+        
+        Args:
+            event: 事件对象
+            
+        Returns:
+            序列化后的事件数据
+        """
+        try:
+            # 尝试使用事件的内置序列化方法
+            if hasattr(event, 'to_dict'):
+                return event.to_dict()
+            
+            # 否则序列化公共属性
+            data = {}
+            for attr_name in dir(event):
+                if not attr_name.startswith('_') and not callable(getattr(event, attr_name)):
+                    try:
+                        value = getattr(event, attr_name)
+                        # 只包含基本类型
+                        if isinstance(value, (str, int, float, bool, list, dict, type(None))):
+                            data[attr_name] = value
+                        else:
+                            data[attr_name] = str(value)
+                    except:
+                        continue
+            
+            return data
+            
+        except Exception as e:
+            logger.warning(f"Failed to serialize event data for {event.__class__.__name__}: {e}")
+            return {'error': 'serialization_failed'}
+    
+    def get_event_history(self, 
+                         event_type: str = None, 
+                         limit: int = 100,
+                         since: datetime = None) -> List[Dict[str, Any]]:
+        """
+        获取事件历史记录
+        
+        Args:
+            event_type: 事件类型过滤器
+            limit: 返回的最大事件数
+            since: 时间过滤器
+            
+        Returns:
+            事件历史记录列表
+        """
+        events = list(self._event_history)
+        
+        # 时间过滤
+        if since:
+            events = [e for e in events 
+                     if datetime.fromisoformat(e['timestamp']) >= since]
+        
+        # 事件类型过滤
+        if event_type:
+            events = [e for e in events if e['event_type'] == event_type]
+        
+        # 限制数量并按时间倒序
+        events = events[-limit:] if len(events) > limit else events
+        return list(reversed(events))
+    
+    def subscribe_to_events(self, subscriber_id: str, event_types: List[str]):
+        """
+        为Web客户端订阅事件
+        
+        Args:
+            subscriber_id: 订阅者ID
+            event_types: 要订阅的事件类型列表
+        """
+        for event_type in event_types:
+            self._web_subscribers[event_type].add(subscriber_id)
+        
+        logger.debug(f"Subscriber {subscriber_id} subscribed to events: {event_types}")
+    
+    def unsubscribe_from_events(self, subscriber_id: str, event_types: List[str] = None):
+        """
+        取消Web客户端的事件订阅
+        
+        Args:
+            subscriber_id: 订阅者ID
+            event_types: 要取消订阅的事件类型列表，None表示全部
+        """
+        if event_types is None:
+            # 取消所有订阅
+            for subscribers in self._web_subscribers.values():
+                subscribers.discard(subscriber_id)
+        else:
+            for event_type in event_types:
+                self._web_subscribers[event_type].discard(subscriber_id)
+        
+        logger.debug(f"Subscriber {subscriber_id} unsubscribed from events")
+    
+    def get_subscribers(self, event_type: str) -> Set[str]:
+        """
+        获取特定事件类型的订阅者
+        
+        Args:
+            event_type: 事件类型
+            
+        Returns:
+            订阅者ID集合
+        """
+        return self._web_subscribers.get(event_type, set()).copy()
+    
+    def set_real_time_events(self, event_types: List[str]):
+        """
+        设置需要实时推送的事件类型
+        
+        Args:
+            event_types: 事件类型列表
+        """
+        self._real_time_events = set(event_types)
+        logger.info(f"Real-time events set to: {event_types}")
+    
+    def is_real_time_event(self, event_type: str) -> bool:
+        """
+        检查事件是否为实时事件
+        
+        Args:
+            event_type: 事件类型
+            
+        Returns:
+            是否为实时事件
+        """
+        return event_type in self._real_time_events
+    
+    def add_event_filter(self, event_type: str, filter_func: Callable[[BaseEvent], bool]):
+        """
+        为特定事件类型添加过滤器
+        
+        Args:
+            event_type: 事件类型
+            filter_func: 过滤函数，返回True表示通过
+        """
+        self._event_filters[event_type] = filter_func
+        logger.debug(f"Added filter for event type: {event_type}")
+    
+    def remove_event_filter(self, event_type: str):
+        """
+        移除事件过滤器
+        
+        Args:
+            event_type: 事件类型
+        """
+        self._event_filters.pop(event_type, None)
+        logger.debug(f"Removed filter for event type: {event_type}")
+    
+    def should_process_event(self, event: BaseEvent) -> bool:
+        """
+        检查事件是否应该被处理（通过过滤器）
+        
+        Args:
+            event: 事件对象
+            
+        Returns:
+            是否应该处理
+        """
+        event_type = event.__class__.__name__
+        filter_func = self._event_filters.get(event_type)
+        
+        if filter_func:
+            try:
+                return filter_func(event)
+            except Exception as e:
+                logger.warning(f"Event filter error for {event_type}: {e}")
+                return True  # 过滤器出错时默认通过
+        
+        return True  # 没有过滤器时默认通过
+    
+    def get_performance_stats(self) -> Dict[str, Any]:
+        """
+        获取事件系统性能统计
+        
+        Returns:
+            性能统计信息
+        """
+        stats = {
+            'total_events_fired': sum(self._event_stats.values()),
+            'event_counts': dict(self._event_stats),
+            'timing_stats': {},
+            'slow_events': [],
+            'total_listeners': sum(len(listeners) for listeners in self._listeners.values()),
+            'global_listeners': len(self._global_listeners),
+            'web_subscribers': {
+                event_type: len(subscribers) 
+                for event_type, subscribers in self._web_subscribers.items()
+            }
+        }
+        
+        # 计算时间统计
+        for event_type, times in self._event_timing.items():
+            if times:
+                stats['timing_stats'][event_type] = {
+                    'count': len(times),
+                    'avg_time': sum(times) / len(times),
+                    'max_time': max(times),
+                    'min_time': min(times)
+                }
+                
+                # 检查慢事件
+                slow_times = [t for t in times if t > self._slow_event_threshold]
+                if slow_times:
+                    stats['slow_events'].append({
+                        'event_type': event_type,
+                        'slow_count': len(slow_times),
+                        'avg_slow_time': sum(slow_times) / len(slow_times)
+                    })
+        
+        return stats
+    
+    def clear_performance_data(self):
+        """清除性能数据"""
+        self._event_timing.clear()
+        self._event_history.clear()
+        self.clear_stats()
+        logger.info("Performance data cleared")
+    
+    async def fire_event_enhanced(self, event: BaseEvent) -> BaseEvent:
+        """
+        增强的事件触发方法，包含Web组件支持
+        
+        Args:
+            event: 要触发的事件
+            
+        Returns:
+            处理后的事件对象
+        """
+        start_time = datetime.now()
+        
+        # 检查过滤器
+        if not self.should_process_event(event):
+            logger.debug(f"Event {event.__class__.__name__} filtered out")
+            return event
+        
+        # 调用原有的事件处理
+        processed_event = await self.fire_event(event)
+        
+        # 计算处理时间
+        processing_time = (datetime.now() - start_time).total_seconds()
+        
+        # 添加到历史记录
+        self.add_to_history(processed_event, processing_time)
+        
+        # 如果是实时事件，通知Web订阅者
+        event_type = event.__class__.__name__
+        if self.is_real_time_event(event_type):
+            await self._notify_web_subscribers(event_type, processed_event)
+        
+        return processed_event
+    
+    async def _notify_web_subscribers(self, event_type: str, event: BaseEvent):
+        """
+        通知Web订阅者有新事件
+        
+        Args:
+            event_type: 事件类型
+            event: 事件对象
+        """
+        subscribers = self.get_subscribers(event_type)
+        if not subscribers:
+            return
+        
+        # 这里应该通过WebSocket或其他机制通知Web客户端
+        # 具体实现依赖于Web组件
+        event_data = {
+            'type': event_type,
+            'timestamp': datetime.now().isoformat(),
+            'data': self._serialize_event_data(event)
+        }
+        
+        logger.debug(f"Notifying {len(subscribers)} web subscribers of {event_type} event")
+        
+        # 如果存在Web组件管理器，委托给它处理
+        # 这将在Web组件中实现具体的通知逻辑
+        if hasattr(self, '_web_notifier'):
+            try:
+                await self._web_notifier(subscribers, event_data)
+            except Exception as e:
+                logger.error(f"Error notifying web subscribers: {e}")
+    
+    def set_web_notifier(self, notifier_func: Callable):
+        """
+        设置Web通知函数
+        
+        Args:
+            notifier_func: 通知函数
+        """
+        self._web_notifier = notifier_func
+        logger.info("Web notifier function set")
 
 
 # Global event manager instance

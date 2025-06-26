@@ -11,7 +11,7 @@ from uuid import UUID
 
 from .config import get_config_manager
 from .event_manager import get_event_manager, fire_event
-from .events import Event
+from .events import BaseEvent
 
 
 logger = logging.getLogger(__name__)
@@ -72,7 +72,7 @@ class PlayerData:
     custom_data: Dict[str, Any] = field(default_factory=dict)
 
 
-class PlayerDataUpdatedEvent(Event):
+class PlayerDataUpdatedEvent(BaseEvent):
     """Event fired when player data is updated."""
     
     def __init__(self, player_name: str, data: PlayerData, source: str = "unknown"):

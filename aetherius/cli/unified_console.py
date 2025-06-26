@@ -56,10 +56,23 @@ class SimpleConsole:
         except:
             pass
         
+        # 初始化插件管理器
+        self._init_plugin_manager()
+        
         # 设置服务器日志监听
         self._setup_server_monitoring()
             
         self._print_startup()
+    
+    def _init_plugin_manager(self):
+        """初始化插件管理器"""
+        try:
+            from ..core import get_plugin_manager
+            self.plugin_manager = get_plugin_manager()
+            print(f"{Fore.GREEN}✓ 已初始化插件管理器{Style.RESET_ALL}")
+        except Exception as e:
+            print(f"{Fore.YELLOW}⚠ 插件管理器初始化失败: {e}{Style.RESET_ALL}")
+            self.plugin_manager = None
     
     def _setup_server_monitoring(self):
         """设置服务器监听和事件订阅"""
@@ -280,7 +293,297 @@ class SimpleConsole:
     
     def _execute_plugin_command(self, command: str):
         """执行插件命令"""
-        print(f"{Fore.MAGENTA}→ 插件:{Style.RESET_ALL} @{command}")
+        if not command:
+            print(f"{Fore.YELLOW}请指定插件命令。使用 @help 查看帮助{Style.RESET_ALL}")
+            return
+            
+        if command == "help":
+            self._show_plugin_help()
+        elif command == "list":
+            self._list_plugins()
+        elif command.startswith("enable "):
+            plugin_name = command[7:].strip()
+            self._enable_plugin(plugin_name)
+        elif command.startswith("disable "):
+            plugin_name = command[8:].strip()
+            self._disable_plugin(plugin_name)
+        elif command.startswith("reload "):
+            plugin_name = command[7:].strip()
+            self._reload_plugin(plugin_name)
+        elif command.startswith("info "):
+            plugin_name = command[5:].strip()
+            self._show_plugin_info(plugin_name)
+        else:
+            print(f"{Fore.YELLOW}未知的插件命令: @{command}{Style.RESET_ALL}")
+            print(f"{Fore.CYAN}使用 @help 查看可用命令{Style.RESET_ALL}")
+    
+    def _show_plugin_help(self):
+        """显示插件命令帮助"""
+        help_text = f"""
+{Fore.MAGENTA}=== 插件管理命令帮助 ==={Style.RESET_ALL}
+
+{Fore.YELLOW}可用命令:{Style.RESET_ALL}
+  @help               显示此帮助信息
+  @list               列出所有插件
+  @enable <插件名>     启用指定插件
+  @disable <插件名>    禁用指定插件
+  @reload <插件名>     重载指定插件
+  @info <插件名>       显示插件详细信息
+
+{Fore.YELLOW}示例:{Style.RESET_ALL}
+  @list
+  @enable MyPlugin
+  @disable MyPlugin
+  @reload MyPlugin
+  @info MyPlugin
+"""
+        print(help_text)
+    
+    def _list_plugins(self):
+        """列出所有插件"""
+        try:
+            # 尝试获取插件管理器
+            plugin_manager = None
+            if self.server_manager and hasattr(self.server_manager, 'plugin_manager'):
+                plugin_manager = self.server_manager.plugin_manager
+            elif hasattr(self, 'core') and hasattr(self.core, 'plugin_manager'):
+                plugin_manager = self.core.plugin_manager
+            else:
+                # 尝试从全局获取
+                try:
+                    from ..core import get_plugin_manager
+                    plugin_manager = get_plugin_manager()
+                except:
+                    pass
+            
+            if not plugin_manager:
+                print(f"{Fore.YELLOW}插件管理器不可用{Style.RESET_ALL}")
+                return
+            
+            # 获取插件列表
+            if hasattr(plugin_manager, 'list_plugins'):
+                plugins = plugin_manager.list_plugins()
+                if not plugins:
+                    print(f"{Fore.YELLOW}未找到任何插件{Style.RESET_ALL}")
+                    return
+                
+                print(f"{Fore.MAGENTA}=== 插件列表 ==={Style.RESET_ALL}")
+                for plugin_name in plugins:
+                    is_enabled = plugin_manager.is_enabled(plugin_name) if hasattr(plugin_manager, 'is_enabled') else False
+                    status = f"{Fore.GREEN}[启用]{Style.RESET_ALL}" if is_enabled else f"{Fore.RED}[禁用]{Style.RESET_ALL}"
+                    print(f"  {status} {plugin_name}")
+            else:
+                print(f"{Fore.YELLOW}插件管理器不支持列表功能{Style.RESET_ALL}")
+                
+        except Exception as e:
+            print(f"{Fore.RED}获取插件列表失败: {e}{Style.RESET_ALL}")
+    
+    def _enable_plugin(self, plugin_name: str):
+        """启用插件"""
+        if not plugin_name:
+            print(f"{Fore.YELLOW}请指定插件名称{Style.RESET_ALL}")
+            return
+            
+        try:
+            plugin_manager = self._get_plugin_manager()
+            if not plugin_manager:
+                print(f"{Fore.RED}插件管理器不可用{Style.RESET_ALL}")
+                return
+            
+            if hasattr(plugin_manager, 'enable_plugin'):
+                # 如果是异步方法
+                import asyncio
+                import inspect
+                if inspect.iscoroutinefunction(plugin_manager.enable_plugin):
+                    def run_async():
+                        try:
+                            # 创建新的事件循环
+                            loop = asyncio.new_event_loop()
+                            asyncio.set_event_loop(loop)
+                            try:
+                                result = loop.run_until_complete(plugin_manager.enable_plugin(plugin_name))
+                                if result:
+                                    print(f"{Fore.GREEN}✓ 插件 {plugin_name} 已启用{Style.RESET_ALL}")
+                                else:
+                                    print(f"{Fore.RED}✗ 插件 {plugin_name} 启用失败{Style.RESET_ALL}")
+                            finally:
+                                loop.close()
+                        except Exception as e:
+                            print(f"{Fore.RED}✗ 启用插件失败: {e}{Style.RESET_ALL}")
+                    
+                    import threading
+                    thread = threading.Thread(target=run_async, daemon=True)
+                    thread.start()
+                    thread.join()  # 等待完成
+                else:
+                    # 同步方法
+                    result = plugin_manager.enable_plugin(plugin_name)
+                    if result:
+                        print(f"{Fore.GREEN}✓ 插件 {plugin_name} 已启用{Style.RESET_ALL}")
+                    else:
+                        print(f"{Fore.RED}✗ 插件 {plugin_name} 启用失败{Style.RESET_ALL}")
+            else:
+                print(f"{Fore.YELLOW}插件管理器不支持启用功能{Style.RESET_ALL}")
+                
+        except Exception as e:
+            print(f"{Fore.RED}启用插件失败: {e}{Style.RESET_ALL}")
+    
+    def _disable_plugin(self, plugin_name: str):
+        """禁用插件"""
+        if not plugin_name:
+            print(f"{Fore.YELLOW}请指定插件名称{Style.RESET_ALL}")
+            return
+            
+        try:
+            plugin_manager = self._get_plugin_manager()
+            if not plugin_manager:
+                print(f"{Fore.RED}插件管理器不可用{Style.RESET_ALL}")
+                return
+            
+            if hasattr(plugin_manager, 'disable_plugin'):
+                # 如果是异步方法
+                import asyncio
+                import inspect
+                if inspect.iscoroutinefunction(plugin_manager.disable_plugin):
+                    def run_async():
+                        try:
+                            # 创建新的事件循环
+                            loop = asyncio.new_event_loop()
+                            asyncio.set_event_loop(loop)
+                            try:
+                                result = loop.run_until_complete(plugin_manager.disable_plugin(plugin_name))
+                                if result:
+                                    print(f"{Fore.GREEN}✓ 插件 {plugin_name} 已禁用{Style.RESET_ALL}")
+                                else:
+                                    print(f"{Fore.RED}✗ 插件 {plugin_name} 禁用失败{Style.RESET_ALL}")
+                            finally:
+                                loop.close()
+                        except Exception as e:
+                            print(f"{Fore.RED}✗ 禁用插件失败: {e}{Style.RESET_ALL}")
+                    
+                    import threading
+                    thread = threading.Thread(target=run_async, daemon=True)
+                    thread.start()
+                    thread.join()  # 等待完成
+                else:
+                    # 同步方法
+                    result = plugin_manager.disable_plugin(plugin_name)
+                    if result:
+                        print(f"{Fore.GREEN}✓ 插件 {plugin_name} 已禁用{Style.RESET_ALL}")
+                    else:
+                        print(f"{Fore.RED}✗ 插件 {plugin_name} 禁用失败{Style.RESET_ALL}")
+            else:
+                print(f"{Fore.YELLOW}插件管理器不支持禁用功能{Style.RESET_ALL}")
+                
+        except Exception as e:
+            print(f"{Fore.RED}禁用插件失败: {e}{Style.RESET_ALL}")
+    
+    def _reload_plugin(self, plugin_name: str):
+        """重载插件"""
+        if not plugin_name:
+            print(f"{Fore.YELLOW}请指定插件名称{Style.RESET_ALL}")
+            return
+            
+        try:
+            plugin_manager = self._get_plugin_manager()
+            if not plugin_manager:
+                print(f"{Fore.RED}插件管理器不可用{Style.RESET_ALL}")
+                return
+            
+            if hasattr(plugin_manager, 'reload_plugin'):
+                # 如果是异步方法
+                import asyncio
+                import inspect
+                if inspect.iscoroutinefunction(plugin_manager.reload_plugin):
+                    def run_async():
+                        try:
+                            # 创建新的事件循环
+                            loop = asyncio.new_event_loop()
+                            asyncio.set_event_loop(loop)
+                            try:
+                                result = loop.run_until_complete(plugin_manager.reload_plugin(plugin_name))
+                                if result:
+                                    print(f"{Fore.GREEN}✓ 插件 {plugin_name} 已重载{Style.RESET_ALL}")
+                                else:
+                                    print(f"{Fore.RED}✗ 插件 {plugin_name} 重载失败{Style.RESET_ALL}")
+                            finally:
+                                loop.close()
+                        except Exception as e:
+                            print(f"{Fore.RED}✗ 重载插件失败: {e}{Style.RESET_ALL}")
+                    
+                    import threading
+                    thread = threading.Thread(target=run_async, daemon=True)
+                    thread.start()
+                    thread.join()  # 等待完成
+                else:
+                    # 同步方法
+                    result = plugin_manager.reload_plugin(plugin_name)
+                    if result:
+                        print(f"{Fore.GREEN}✓ 插件 {plugin_name} 已重载{Style.RESET_ALL}")
+                    else:
+                        print(f"{Fore.RED}✗ 插件 {plugin_name} 重载失败{Style.RESET_ALL}")
+            else:
+                print(f"{Fore.YELLOW}插件管理器不支持重载功能{Style.RESET_ALL}")
+                
+        except Exception as e:
+            print(f"{Fore.RED}重载插件失败: {e}{Style.RESET_ALL}")
+    
+    def _show_plugin_info(self, plugin_name: str):
+        """显示插件详细信息"""
+        if not plugin_name:
+            print(f"{Fore.YELLOW}请指定插件名称{Style.RESET_ALL}")
+            return
+            
+        try:
+            plugin_manager = self._get_plugin_manager()
+            if not plugin_manager:
+                print(f"{Fore.RED}插件管理器不可用{Style.RESET_ALL}")
+                return
+            
+            if hasattr(plugin_manager, 'get_plugin_info'):
+                plugin_info = plugin_manager.get_plugin_info(plugin_name)
+                if plugin_info:
+                    print(f"{Fore.MAGENTA}=== 插件信息: {plugin_name} ==={Style.RESET_ALL}")
+                    if hasattr(plugin_info, 'to_dict'):
+                        info_dict = plugin_info.to_dict()
+                        for key, value in info_dict.items():
+                            print(f"  {key}: {value}")
+                    else:
+                        print(f"  信息: {plugin_info}")
+                else:
+                    print(f"{Fore.YELLOW}未找到插件: {plugin_name}{Style.RESET_ALL}")
+            else:
+                print(f"{Fore.YELLOW}插件管理器不支持信息查询功能{Style.RESET_ALL}")
+                
+        except Exception as e:
+            print(f"{Fore.RED}获取插件信息失败: {e}{Style.RESET_ALL}")
+    
+    def _get_plugin_manager(self):
+        """获取插件管理器"""
+        # 尝试多种方式获取插件管理器
+        plugin_manager = None
+        
+        # 方式1: 使用控制台的插件管理器
+        if hasattr(self, 'plugin_manager') and self.plugin_manager:
+            plugin_manager = self.plugin_manager
+        
+        # 方式2: 从服务器管理器获取
+        elif self.server_manager and hasattr(self.server_manager, 'plugin_manager'):
+            plugin_manager = self.server_manager.plugin_manager
+        
+        # 方式3: 从核心实例获取
+        elif hasattr(self, 'core') and hasattr(self.core, 'plugin_manager'):
+            plugin_manager = self.core.plugin_manager
+        
+        # 方式4: 从全局获取
+        else:
+            try:
+                from ..core import get_plugin_manager
+                plugin_manager = get_plugin_manager()
+            except:
+                pass
+        
+        return plugin_manager
     
     def _execute_script_command(self, command: str):
         """执行脚本命令"""
@@ -345,7 +648,7 @@ class SimpleConsole:
 {Fore.YELLOW}命令前缀:{Style.RESET_ALL}
   {Fore.GREEN}/ {Style.RESET_ALL} Minecraft命令    (例: /help, /stop, /list)
   {Fore.BLUE}! {Style.RESET_ALL} Aetherius命令    (例: !status, !quit, !help) 
-  {Fore.MAGENTA}@ {Style.RESET_ALL} 插件命令        (例: @list, @enable)
+  {Fore.MAGENTA}@ {Style.RESET_ALL} 插件命令        (例: @list, @enable <插件名>, @help)
   {Fore.CYAN}# {Style.RESET_ALL} 脚本命令        (例: #run, #list)
   {Fore.RED}& {Style.RESET_ALL} 管理命令        (例: &promote, &ban)
   {Fore.WHITE}  {Style.RESET_ALL} 聊天消息        (直接输入文本)

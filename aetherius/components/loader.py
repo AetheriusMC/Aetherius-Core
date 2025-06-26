@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Type
 
 from ..api.component import Component, ComponentInfo
+from ..core.component import Component as CoreComponent, ComponentInfo as CoreComponentInfo, WebComponent
 from ..core.config import Config
 from .state import ComponentState
 
