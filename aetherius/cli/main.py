@@ -2,11 +2,8 @@
 
 import asyncio
 import logging
-<<<<<<< HEAD
-=======
 from pathlib import Path
 from typing import Optional, List
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
 
 import typer
 from rich.console import Console
@@ -14,24 +11,6 @@ from rich.logging import RichHandler
 from rich.panel import Panel
 from rich.text import Text
 
-<<<<<<< HEAD
-from ..components import ComponentManager
-from ..core import (
-    Config,
-    LogLineEvent,
-    PlayerChatEvent,
-    PlayerDeathEvent,
-    PlayerJoinEvent,
-    PlayerLeaveEvent,
-    ServerCrashEvent,
-    ServerProcessWrapper,
-    ServerStartedEvent,
-    ServerStoppedEvent,
-    get_event_manager,
-    on_event,
-)
-from ..plugins import PluginManager
-=======
 from ..core import (
     Config, ServerProcessWrapper, get_event_manager, on_event,
     PlayerJoinEvent, PlayerLeaveEvent, PlayerChatEvent, PlayerDeathEvent,
@@ -39,7 +18,6 @@ from ..core import (
 )
 from ..plugins import PluginManager
 from ..components import ComponentManager
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
 
 app = typer.Typer(
     name="aetherius",
@@ -58,17 +36,10 @@ app.add_typer(component_app, name="component")
 console = Console()
 
 # Global state
-<<<<<<< HEAD
-_config: Config | None = None
-_server_wrapper: ServerProcessWrapper | None = None
-_plugin_manager: PluginManager | None = None
-_component_manager: ComponentManager | None = None
-=======
 _config: Optional[Config] = None
 _server_wrapper: Optional[ServerProcessWrapper] = None
 _plugin_manager: Optional[PluginManager] = None
 _component_manager: Optional[ComponentManager] = None
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
 
 
 def setup_logging(level: str = "INFO") -> None:
@@ -96,16 +67,6 @@ def get_server_wrapper() -> ServerProcessWrapper:
     if _server_wrapper is None:
         config = get_config()
         _server_wrapper = ServerProcessWrapper(config.server)
-<<<<<<< HEAD
-
-        # Set the global server wrapper for plugins
-        from ..core import set_server_wrapper
-        set_server_wrapper(_server_wrapper)
-
-        # Set up enhanced event-based log handlers
-        setup_event_handlers()
-
-=======
         
         # Set the global server wrapper for plugins
         from ..core import set_server_wrapper
@@ -114,7 +75,6 @@ def get_server_wrapper() -> ServerProcessWrapper:
         # Set up enhanced event-based log handlers
         setup_event_handlers()
     
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
     return _server_wrapper
 
 
@@ -124,19 +84,11 @@ def get_plugin_manager() -> PluginManager:
     if _plugin_manager is None:
         config = get_config()
         _plugin_manager = PluginManager(config)
-<<<<<<< HEAD
-
-        # Set the global plugin manager
-        from ..core import set_plugin_manager
-        set_plugin_manager(_plugin_manager)
-
-=======
         
         # Set the global plugin manager
         from ..core import set_plugin_manager
         set_plugin_manager(_plugin_manager)
     
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
     return _plugin_manager
 
 
@@ -146,45 +98,21 @@ def get_component_manager() -> ComponentManager:
     if _component_manager is None:
         config = get_config()
         _component_manager = ComponentManager(config)
-<<<<<<< HEAD
-
-        # Set the global component manager
-        from ..core import set_component_manager
-        set_component_manager(_component_manager)
-
-=======
         
         # Set the global component manager
         from ..core import set_component_manager
         set_component_manager(_component_manager)
     
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
     return _component_manager
 
 
 def setup_event_handlers() -> None:
     """Setup event handlers for enhanced CLI output."""
-<<<<<<< HEAD
-
-=======
     
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
     @on_event(PlayerJoinEvent)
     async def handle_player_join(event: PlayerJoinEvent):
         ip_info = f" from {event.ip_address}" if event.ip_address else ""
         console.print(f"[green]✓[/green] [bold]{event.player_name}[/bold] joined the server{ip_info}")
-<<<<<<< HEAD
-
-    @on_event(PlayerLeaveEvent)
-    async def handle_player_leave(event: PlayerLeaveEvent):
-        reason_info = f" ({event.leave_reason})" if event.leave_reason else ""
-        console.print(f"[yellow]✗[/yellow] [bold]{event.player_name}[/bold] left the server{reason_info}")
-
-    @on_event(PlayerChatEvent)
-    async def handle_player_chat(event: PlayerChatEvent):
-        console.print(f"[blue]💬[/blue] [bold cyan]{event.player_name}[/bold cyan]: {event.message}")
-
-=======
     
     @on_event(PlayerLeaveEvent)  
     async def handle_player_leave(event: PlayerLeaveEvent):
@@ -195,48 +123,30 @@ def setup_event_handlers() -> None:
     async def handle_player_chat(event: PlayerChatEvent):
         console.print(f"[blue]💬[/blue] [bold cyan]{event.player_name}[/bold cyan]: {event.message}")
     
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
     @on_event(PlayerDeathEvent)
     async def handle_player_death(event: PlayerDeathEvent):
         death_msg = event.death_message or "died"
         killer_info = f" by {event.killer}" if event.killer else ""
         console.print(f"[red]💀[/red] [bold]{event.player_name}[/bold] {death_msg}{killer_info}")
-<<<<<<< HEAD
-
-=======
     
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
     @on_event(ServerStartedEvent)
     async def handle_server_started(event: ServerStartedEvent):
         startup_time = getattr(event, 'startup_time', 0)
         if startup_time:
             console.print(f"[green]🚀 Server started successfully![/green] [dim](took {startup_time:.1f}s)[/dim]")
         else:
-<<<<<<< HEAD
-            console.print("[green]🚀 Server started successfully![/green]")
-
-=======
             console.print(f"[green]🚀 Server started successfully![/green]")
     
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
     @on_event(ServerStoppedEvent)
     async def handle_server_stopped(event: ServerStoppedEvent):
         uptime_str = f"{event.uptime:.1f}s" if event.uptime else "unknown"
         console.print(f"[yellow]🛑 Server stopped[/yellow] [dim](uptime: {uptime_str})[/dim]")
-<<<<<<< HEAD
-
-=======
     
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
     @on_event(ServerCrashEvent)
     async def handle_server_crash(event: ServerCrashEvent):
         restart_info = " [Auto-restart enabled]" if event.will_restart else ""
         console.print(f"[red bold]💥 Server crashed![/red bold] [dim](exit code: {event.exit_code}){restart_info}[/dim]")
-<<<<<<< HEAD
-
-=======
     
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
     @on_event(LogLineEvent)
     async def handle_log_line(event: LogLineEvent):
         # Only show important log lines to avoid spam
@@ -249,11 +159,7 @@ def setup_event_handlers() -> None:
 
 @server_app.command("start")
 def server_start(
-<<<<<<< HEAD
-    jar_path: str | None = typer.Option(
-=======
     jar_path: Optional[str] = typer.Option(
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
         None, "--jar", "-j", help="Path to server JAR file"
     ),
     background: bool = typer.Option(
@@ -262,21 +168,6 @@ def server_start(
 ) -> None:
     """Start the Minecraft server."""
     config = get_config()
-<<<<<<< HEAD
-
-    # Override JAR path if provided
-    if jar_path:
-        config.server.jar_path = jar_path
-
-    server = get_server_wrapper()
-
-    if server.is_alive:
-        console.print("[yellow]Server is already running![/yellow]")
-        return
-
-    console.print("[blue]Starting Minecraft server...[/blue]")
-
-=======
     
     # Override JAR path if provided
     if jar_path:
@@ -325,18 +216,6 @@ def server_stop(
 ) -> None:
     """Stop the Minecraft server."""
     from ..core.server_state import get_server_state
-<<<<<<< HEAD
-
-    server = get_server_wrapper()
-    server_state = get_server_state()
-
-    if not server.is_alive:
-        console.print("[yellow]Server is not running![/yellow]")
-        return
-
-    console.print("[blue]Stopping Minecraft server...[/blue]")
-
-=======
     
     server = get_server_wrapper()
     server_state = get_server_state()
@@ -347,7 +226,6 @@ def server_stop(
     
     console.print("[blue]Stopping Minecraft server...[/blue]")
     
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
     async def stop_server():
         # Try to stop via our wrapper first
         if server.process is not None:
@@ -355,21 +233,13 @@ def server_stop(
         else:
             # Server is running but not in our process, use state management to stop
             success = server_state.terminate_server(force=force)
-<<<<<<< HEAD
-
-=======
         
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
         if success:
             console.print("[green]✓ Server stopped successfully![/green]")
         else:
             console.print("[red]✗ Failed to stop server![/red]")
             raise typer.Exit(1)
-<<<<<<< HEAD
-
-=======
     
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
     try:
         asyncio.run(stop_server())
     except KeyboardInterrupt:
@@ -381,25 +251,15 @@ def server_stop(
 def server_restart() -> None:
     """Restart the Minecraft server."""
     server = get_server_wrapper()
-<<<<<<< HEAD
-
-    console.print("[blue]Restarting Minecraft server...[/blue]")
-
-=======
     
     console.print("[blue]Restarting Minecraft server...[/blue]")
     
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
     async def restart_server():
         success = await server.restart()
         if success:
             console.print("[green]✓ Server restarted successfully![/green]")
             console.print("\n[dim]Server is now running. Press Ctrl+C to stop.[/dim]")
-<<<<<<< HEAD
-
-=======
             
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
             try:
                 # Keep the CLI running while server is active
                 while server.is_alive:
@@ -411,11 +271,7 @@ def server_restart() -> None:
         else:
             console.print("[red]✗ Failed to restart server![/red]")
             raise typer.Exit(1)
-<<<<<<< HEAD
-
-=======
     
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
     try:
         asyncio.run(restart_server())
     except KeyboardInterrupt:
@@ -426,15 +282,6 @@ def server_restart() -> None:
 def server_status() -> None:
     """Show server status."""
     from ..core.server_state import get_server_state
-<<<<<<< HEAD
-
-    server = get_server_wrapper()
-    server_state = get_server_state()
-
-    if server.is_alive:
-        status_text = Text("RUNNING", style="green bold")
-
-=======
     
     server = get_server_wrapper()
     server_state = get_server_state()
@@ -442,7 +289,6 @@ def server_status() -> None:
     if server.is_alive:
         status_text = Text("RUNNING", style="green bold")
         
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
         # Get detailed server info from state
         server_info = server_state.get_server_info()
         if server_info:
@@ -461,11 +307,7 @@ def server_status() -> None:
         memory_info = ""
         cpu_info = ""
         start_time = ""
-<<<<<<< HEAD
-
-=======
     
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
     panel_content = f"Status: {status_text}\n"
     if pid_info:
         panel_content += f"{pid_info}\n"
@@ -475,29 +317,17 @@ def server_status() -> None:
         panel_content += f"{cpu_info}\n"
     if start_time:
         panel_content += f"Started: {start_time}\n"
-<<<<<<< HEAD
-
-    config = get_config()
-    panel_content += f"JAR: {config.server.jar_path}\n"
-    panel_content += f"Working Dir: {config.server.working_directory}"
-
-=======
     
     config = get_config()
     panel_content += f"JAR: {config.server.jar_path}\n"
     panel_content += f"Working Dir: {config.server.working_directory}"
     
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
     console.print(Panel(panel_content, title="Server Status", expand=False))
 
 
 @app.command("cmd")
 def send_command(
-<<<<<<< HEAD
-    command_parts: list[str] = typer.Argument(..., help="Command and arguments to send to the server")
-=======
     command_parts: List[str] = typer.Argument(..., help="Command and arguments to send to the server")
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
 ) -> None:
     """Send a command to the running server.
     
@@ -508,16 +338,6 @@ def send_command(
         aetherius cmd say "Hello World"
     """
     server = get_server_wrapper()
-<<<<<<< HEAD
-
-    if not server.is_alive:
-        console.print("[red]Server is not running![/red]")
-        raise typer.Exit(1)
-
-    # Join all command parts into a single command string
-    command = " ".join(command_parts)
-
-=======
     
     if not server.is_alive:
         console.print("[red]Server is not running![/red]")
@@ -526,23 +346,12 @@ def send_command(
     # Join all command parts into a single command string
     command = " ".join(command_parts)
     
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
     async def send_cmd():
         # Use the command queue approach with output capture
         try:
             # Add command to queue and wait for result
             from ..core.command_queue import get_command_queue
             command_queue = get_command_queue()
-<<<<<<< HEAD
-
-            console.print(f"[blue]Sending command:[/blue] {command}")
-            command_id = command_queue.add_command(command, timeout=30.0)
-            result = await command_queue.wait_for_completion(command_id, timeout=30.0)
-
-            if result['status'] == 'completed' and result['success']:
-                console.print("[green]✓ Command executed successfully[/green]")
-
-=======
             
             console.print(f"[blue]Sending command:[/blue] {command}")
             command_id = command_queue.add_command(command, timeout=30.0)
@@ -551,7 +360,6 @@ def send_command(
             if result['status'] == 'completed' and result['success']:
                 console.print(f"[green]✓ Command executed successfully[/green]")
                 
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
                 # Display captured output if available
                 if result.get('output'):
                     console.print("[cyan]Server response:[/cyan]")
@@ -566,294 +374,110 @@ def send_command(
                 if result.get('error'):
                     console.print(f"[red]Error:[/red] {result['error']}")
                 raise typer.Exit(1)
-<<<<<<< HEAD
-
-=======
                 
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
         except Exception as e:
             console.print(f"[red]✗ Error sending command:[/red] {e}")
             console.print("[yellow]Note: Cross-process command execution is experimental.[/yellow]")
             console.print("[dim]Try using the console mode for interactive command execution.[/dim]")
             raise typer.Exit(1)
-<<<<<<< HEAD
-
-=======
     
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
     asyncio.run(send_cmd())
 
 
 @app.command("console")
-<<<<<<< HEAD
 def console_mode(
-    legacy: bool = typer.Option(False, "--legacy", help="Use legacy console mode")
+    console_type: Optional[str] = typer.Option(
+        None, "--type", "-t", 
+        help="Console type: 'enhanced', 'improved', 'stable', 'fallback', or 'info' for capabilities"
+    ),
+    no_server_check: bool = typer.Option(
+        False, "--no-server-check", 
+        help="Skip server running check (useful for testing)"
+    )
 ) -> None:
-    """Enter interactive console mode with real-time input display and command prefix support."""
-    server = get_server_wrapper()
-
-    if not server.is_alive:
-        console.print("[red]Server is not running! Start the server first.[/red]")
-        raise typer.Exit(1)
-
-    if legacy:
-        # 使用旧版控制台
-        console.print(Panel(
-            "Legacy Interactive Console Mode\n"
-            "🎮 Real-time events and server logs\n"
-            "💬 Type commands to send to the server\n"
-            "📤 Commands now provide real-time feedback\n"
-            "📊 Type 'stats' to see event statistics\n"
-            "🚪 Type 'exit' to quit",
-            title="Aetherius Console v2.1 (Legacy)",
-            expand=False
-        ))
-        _run_legacy_console(server)
-    else:
-        # 使用统一控制台
-        console.print(Panel(
-            "[bold cyan]Unified Console Mode[/bold cyan]\n\n"
-            "[green]Command Prefixes:[/green]\n"
-            "  [bold]/[/bold] - Minecraft server command (default)\n"
-            "  [bold]![/bold] - Aetherius management command\n"
-            "  [bold]@[/bold] - System command\n"
-            "  [bold]#[/bold] - Plugin command\n\n"
-            "[yellow]Features:[/yellow]\n"
-            "  ⌨️  Real-time input display\n"
-            "  📋 Server logs & events\n"
-            "  📊 Event statistics\n"
-            "  💬 Command feedback\n\n"
-            "[dim]Type 'exit' to quit[/dim]",
-            title="🎮 Aetherius Unified Console",
-            expand=False
-        ))
-
-        async def run_unified_console():
-            from .simple_console import SimpleConsole
-            simple_console = SimpleConsole(server)
-            await simple_console.start()
-
-        try:
-            asyncio.run(run_unified_console())
-        except KeyboardInterrupt:
-            console.print("\n[yellow]Console interrupted by user[/yellow]")
-
-
-def _run_legacy_console(server: ServerProcessWrapper) -> None:
-    """运行旧版控制台逻辑"""
-
-=======
-def console_mode() -> None:
-    """Enter interactive console mode with enhanced event display."""
+    """Enter interactive console mode with real-time display and history."""
     server = get_server_wrapper()
     
-    if not server.is_alive:
+    # Check server status unless explicitly skipped
+    if not no_server_check and not server.is_alive:
         console.print("[red]Server is not running! Start the server first.[/red]")
+        console.print("[dim]Or use --no-server-check to start console anyway.[/dim]")
         raise typer.Exit(1)
     
-    console.print(Panel(
-        "Enhanced Interactive Console Mode\n"
-        "🎮 Real-time events and server logs\n"
-        "💬 Type commands to send to the server\n"
-        "📤 Commands now provide real-time feedback\n"
-        "📊 Type 'stats' to see event statistics\n"
-        "🚪 Type 'exit' to quit",
-        title="Aetherius Console v2.1",
-        expand=False
-    ))
+    # Create command handler for the console
+    async def command_handler(command: str) -> None:
+        """Handle commands sent from the console."""
+        if server.is_alive:
+            try:
+                if server.process is not None:
+                    # Direct command if server is in same process
+                    success = await server.send_command(command)
+                    if not success:
+                        raise Exception("Failed to send command to server")
+                else:
+                    # For cross-process, use command queue
+                    from ..core.command_queue import get_command_queue
+                    command_queue = get_command_queue()
+                    
+                    command_id = command_queue.add_command(command, timeout=10.0)
+                    result = await command_queue.wait_for_completion(command_id, timeout=10.0)
+                    
+                    if result['status'] != 'completed' or not result['success']:
+                        error_msg = result.get('error', 'Unknown error')
+                        raise Exception(f"Command failed: {error_msg}")
+            except Exception as e:
+                raise Exception(f"Error executing command: {str(e)}")
+        else:
+            raise Exception("Server is not running")
     
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
-    async def console_loop():
-        try:
-            while server.is_alive:
-                try:
-                    # Use asyncio to handle input without blocking
-                    cmd = await asyncio.get_event_loop().run_in_executor(
-                        None, input, "> "
-                    )
-<<<<<<< HEAD
-
-                    cmd = cmd.strip()
-                    if not cmd:
-                        continue
-
-=======
-                    
-                    cmd = cmd.strip()
-                    if not cmd:
-                        continue
-                    
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
-                    if cmd.lower() in ("exit", "quit"):
-                        break
-                    elif cmd.lower() == "stats":
-                        show_event_stats()
-                        continue
-                    elif cmd.lower() == "help":
-                        show_console_help()
-                        continue
-<<<<<<< HEAD
-
-=======
-                    
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
-                    # Send command with output capture
-                    try:
-                        if server.process is not None:
-                            # Direct command if server is in same process
-<<<<<<< HEAD
-                            import uuid
-
-                            from ..core.output_capture import get_output_capture
-
-                            output_capture = get_output_capture()
-                            capture_id = str(uuid.uuid4())
-
-                            # Start capture
-                            output_capture.start_capture(capture_id, cmd)
-
-                            # Send command
-                            success = await server.send_command(cmd)
-
-                            if success:
-                                console.print(f"[green]Command sent:[/green] {cmd}")
-
-                                # Wait for output and display it
-                                await asyncio.sleep(0.5)
-                                captured_output = output_capture.finish_capture(capture_id)
-
-=======
-                            from ..core.output_capture import get_output_capture
-                            import uuid
-                            
-                            output_capture = get_output_capture()
-                            capture_id = str(uuid.uuid4())
-                            
-                            # Start capture
-                            output_capture.start_capture(capture_id, cmd)
-                            
-                            # Send command
-                            success = await server.send_command(cmd)
-                            
-                            if success:
-                                console.print(f"[green]Command sent:[/green] {cmd}")
-                                
-                                # Wait for output and display it
-                                await asyncio.sleep(0.5)
-                                captured_output = output_capture.finish_capture(capture_id)
-                                
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
-                                if captured_output:
-                                    console.print("[cyan]Server response:[/cyan]")
-                                    console.print(f"[dim]{captured_output}[/dim]")
-                            else:
-                                console.print(f"[red]Failed to send command:[/red] {cmd}")
-                                output_capture.finish_capture(capture_id)
-                        else:
-                            # For cross-process, use command queue with output capture
-                            from ..core.command_queue import get_command_queue
-                            command_queue = get_command_queue()
-<<<<<<< HEAD
-
-                            console.print(f"[blue]Sending command:[/blue] {cmd}")
-                            command_id = command_queue.add_command(cmd, timeout=10.0)
-                            result = await command_queue.wait_for_completion(command_id, timeout=10.0)
-
-                            if result['status'] == 'completed' and result['success']:
-                                console.print("[green]✓ Command executed successfully[/green]")
-
-=======
-                            
-                            console.print(f"[blue]Sending command:[/blue] {cmd}")
-                            command_id = command_queue.add_command(cmd, timeout=10.0)
-                            result = await command_queue.wait_for_completion(command_id, timeout=10.0)
-                            
-                            if result['status'] == 'completed' and result['success']:
-                                console.print(f"[green]✓ Command executed successfully[/green]")
-                                
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
-                                # Display captured output if available
-                                if result.get('output'):
-                                    console.print("[cyan]Server response:[/cyan]")
-                                    console.print(f"[dim]{result['output']}[/dim]")
-                            elif result['status'] == 'timeout':
-                                console.print(f"[yellow]Command timed out:[/yellow] {cmd}")
-                            else:
-                                console.print(f"[red]Command failed:[/red] {cmd}")
-                                if result.get('error'):
-                                    console.print(f"[red]Error:[/red] {result['error']}")
-<<<<<<< HEAD
-
-                    except Exception as e:
-                        console.print(f"[red]Error sending command:[/red] {e}")
-                        console.print(f"[dim]Command attempted: {cmd}[/dim]")
-
-=======
-                            
-                    except Exception as e:
-                        console.print(f"[red]Error sending command:[/red] {e}")
-                        console.print(f"[dim]Command attempted: {cmd}[/dim]")
-                    
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
-                except EOFError:
-                    break
-                except KeyboardInterrupt:
-                    break
-<<<<<<< HEAD
-
-        except Exception as e:
-            console.print(f"[red]Console error: {e}[/red]")
-
-=======
-                    
-        except Exception as e:
-            console.print(f"[red]Console error: {e}[/red]")
+    # Start the console using the console manager
+    async def start_console_async():
+        from .console_manager import start_console
+        await start_console(server, command_handler, console_type)
     
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
     try:
-        asyncio.run(console_loop())
+        asyncio.run(start_console_async())
     except KeyboardInterrupt:
-        pass
-<<<<<<< HEAD
+        console.print("\n[yellow]Console interrupted by user[/yellow]")
 
-=======
+
+@app.command("console-info")
+def console_info() -> None:
+    """Show terminal capabilities and console options."""
+    from .console_manager import ConsoleManager
     
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
-    console.print("\n[dim]Exited console mode.[/dim]")
+    server = get_server_wrapper()
+    manager = ConsoleManager(server)
+    
+    info_text = manager.get_capabilities_info()
+    console.print(Panel(info_text, title="Terminal Capabilities", expand=False))
+    
+    console.print("\n[bold]Console Options:[/bold]")
+    console.print("• [cyan]aetherius console[/cyan] - Auto-detect best console")
+    console.print("• [cyan]aetherius console --type enhanced[/cyan] - Force enhanced console (experimental)")
+    console.print("• [cyan]aetherius console --type improved[/cyan] - Force improved console (advanced)")
+    console.print("• [cyan]aetherius console --type stable[/cyan] - Force stable console (recommended)")
+    console.print("• [cyan]aetherius console --type fallback[/cyan] - Force fallback console") 
+    console.print("• [cyan]aetherius console --no-server-check[/cyan] - Start without server")
 
 
 def show_event_stats() -> None:
     """Show event statistics."""
     event_manager = get_event_manager()
     stats = event_manager.get_event_stats()
-<<<<<<< HEAD
-
-    if not stats:
-        console.print("[yellow]No events have been fired yet.[/yellow]")
-        return
-
-=======
     
     if not stats:
         console.print("[yellow]No events have been fired yet.[/yellow]")
         return
     
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
     from rich.table import Table
     table = Table(title="Event Statistics")
     table.add_column("Event Type", style="cyan")
     table.add_column("Count", justify="right", style="magenta")
-<<<<<<< HEAD
-
-    for event_type, count in sorted(stats.items(), key=lambda x: x[1], reverse=True):
-        table.add_row(event_type, str(count))
-
-=======
     
     for event_type, count in sorted(stats.items(), key=lambda x: x[1], reverse=True):
         table.add_row(event_type, str(count))
     
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
     console.print(table)
 
 
@@ -890,36 +514,17 @@ def events_listeners() -> None:
     """Show registered event listeners."""
     event_manager = get_event_manager()
     listeners = event_manager.get_listeners()
-<<<<<<< HEAD
-
-    if not listeners:
-        console.print("[yellow]No event listeners registered.[/yellow]")
-        return
-
-=======
     
     if not listeners:
         console.print("[yellow]No event listeners registered.[/yellow]")
         return
     
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
     from rich.table import Table
     table = Table(title="Registered Event Listeners")
     table.add_column("Event Type", style="cyan")
     table.add_column("Function", style="yellow")
     table.add_column("Priority", style="magenta")
     table.add_column("Async", style="green")
-<<<<<<< HEAD
-
-    # Group listeners by event type
-    from collections import defaultdict
-    listeners_by_type = defaultdict(list)
-
-    for listener in listeners:
-        event_type_name = listener.event_type.__name__
-        listeners_by_type[event_type_name].append(listener)
-
-=======
     
     # Group listeners by event type
     from collections import defaultdict
@@ -929,110 +534,32 @@ def events_listeners() -> None:
         event_type_name = listener.event_type.__name__
         listeners_by_type[event_type_name].append(listener)
     
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
     for event_type, type_listeners in sorted(listeners_by_type.items()):
         for i, listener in enumerate(type_listeners):
             event_name = event_type if i == 0 else ""
             function_name = listener.callback.__name__
             priority = listener.priority.name
             is_async = "Yes" if listener.is_async else "No"
-<<<<<<< HEAD
-
-            table.add_row(event_name, function_name, priority, is_async)
-
-    console.print(table)
-
-
-@app.command("test-input")
-def test_input_display() -> None:
-    """Test input display functionality."""
-    import asyncio
-    from .test_console import simple_input_test, TestConsole
-    
-    console.print(Panel(
-        "[bold yellow]Input Display Test[/bold yellow]\n\n"
-        "This will test if input display is working correctly.\n"
-        "Choose test mode:\n"
-        "1. Simple test (no Live display)\n"
-        "2. Console test (with Live display)\n\n"
-        "[dim]Press Ctrl+C to exit at any time[/dim]",
-        title="🧪 Test Mode",
-        expand=False
-    ))
-    
-    try:
-        choice = input("Enter choice (1 or 2): ").strip()
-        
-        if choice == "1":
-            asyncio.run(simple_input_test())
-        elif choice == "2":
-            server = get_server_wrapper()
-            if not server.is_alive:
-                console.print("[yellow]Server not running, but test will continue...[/yellow]")
-            
-            async def run_test():
-                test_console = TestConsole(server)
-                await test_console.start_test()
-            
-            asyncio.run(run_test())
-        else:
-            console.print("[red]Invalid choice[/red]")
-    except (EOFError, KeyboardInterrupt):
-        console.print("\n[yellow]Test cancelled[/yellow]")
-
-
-@app.command("super-simple")
-def super_simple_console() -> None:
-    """Super simple console test - no Rich Live, just basic input/output."""
-    import asyncio
-    from .simple_console import SuperSimpleConsole
-    
-    server = get_server_wrapper()
-    if not server.is_alive:
-        console.print("[yellow]Server not running, but test will continue...[/yellow]")
-    
-    async def run_super_simple():
-        super_console = SuperSimpleConsole(server)
-        await super_console.start()
-    
-    try:
-        asyncio.run(run_super_simple())
-    except KeyboardInterrupt:
-        console.print("\n[yellow]Super simple console cancelled[/yellow]")
-
-
-=======
             
             table.add_row(event_name, function_name, priority, is_async)
     
     console.print(table)
 
 
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
 @events_app.command("test")
 def events_test(
     event_type: str = typer.Argument(help="Event type to test (e.g., player_join)")
 ) -> None:
     """Test firing a specific event type."""
     from ..core.events import EVENT_TYPES
-<<<<<<< HEAD
-
-=======
     
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
     if event_type not in EVENT_TYPES:
         console.print(f"[red]Unknown event type: {event_type}[/red]")
         console.print(f"Available types: {', '.join(EVENT_TYPES.keys())}")
         raise typer.Exit(1)
-<<<<<<< HEAD
-
-    event_class = EVENT_TYPES[event_type]
-
-=======
     
     event_class = EVENT_TYPES[event_type]
     
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
     # Create a test event with dummy data
     test_data = {}
     if event_type == "player_join":
@@ -1045,30 +572,17 @@ def events_test(
         test_data = {"player_name": "TestPlayer", "death_message": "fell from a high place"}
     elif event_type == "server_started":
         test_data = {"pid": 12345, "startup_time": 5.2}
-<<<<<<< HEAD
-
-    try:
-        test_event = event_class(**test_data)
-
-=======
     
     try:
         test_event = event_class(**test_data)
         
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
         async def fire_test_event():
             from ..core.event_manager import fire_event
             await fire_event(test_event)
             console.print(f"[green]✓[/green] Test event '{event_type}' fired successfully")
-<<<<<<< HEAD
-
-        asyncio.run(fire_test_event())
-
-=======
         
         asyncio.run(fire_test_event())
         
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
     except Exception as e:
         console.print(f"[red]Error firing test event: {e}[/red]")
 
@@ -1078,26 +592,13 @@ def events_test(
 def plugin_list() -> None:
     """List all loaded plugins."""
     plugin_manager = get_plugin_manager()
-<<<<<<< HEAD
-
-=======
     
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
     # Try to auto-load plugins if none are loaded
     if not plugin_manager.list_plugins():
         async def auto_load():
             await plugin_manager.load_all_plugins()
             await plugin_manager.enable_all_plugins()
         asyncio.run(auto_load())
-<<<<<<< HEAD
-
-    plugins = plugin_manager.list_plugins()
-
-    if not plugins:
-        console.print("[yellow]No plugins found. Run 'aetherius plugin load' first.[/yellow]")
-        return
-
-=======
     
     plugins = plugin_manager.list_plugins()
     
@@ -1105,38 +606,25 @@ def plugin_list() -> None:
         console.print("[yellow]No plugins found. Run 'aetherius plugin load' first.[/yellow]")
         return
     
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
     from rich.table import Table
     table = Table(title="Loaded Plugins")
     table.add_column("Name", style="cyan")
     table.add_column("Version", style="magenta")
     table.add_column("Status", style="green")
     table.add_column("Description", style="dim")
-<<<<<<< HEAD
-
-=======
     
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
     for plugin_name in plugins:
         info = plugin_manager.get_plugin_info(plugin_name)
         status = "Enabled" if plugin_manager.is_enabled(plugin_name) else "Disabled"
         status_style = "green" if plugin_manager.is_enabled(plugin_name) else "red"
-<<<<<<< HEAD
-
-=======
         
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
         table.add_row(
             plugin_name,
             info.version if info else "Unknown",
             f"[{status_style}]{status}[/{status_style}]",
             info.description if info else "No description"
         )
-<<<<<<< HEAD
-
-=======
     
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
     console.print(table)
 
 
@@ -1144,29 +632,17 @@ def plugin_list() -> None:
 def plugin_load() -> None:
     """Load all plugins from the plugins directory."""
     plugin_manager = get_plugin_manager()
-<<<<<<< HEAD
-
-=======
     
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
     async def load_plugins():
         console.print("[blue]Loading plugins...[/blue]")
         loaded = await plugin_manager.load_all_plugins()
         console.print(f"[green]✓[/green] Loaded {loaded} plugins")
-<<<<<<< HEAD
-
-=======
         
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
         # Also enable all loaded plugins
         if loaded > 0:
             enabled = await plugin_manager.enable_all_plugins()
             console.print(f"[green]✓[/green] Enabled {enabled} plugins")
-<<<<<<< HEAD
-
-=======
     
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
     asyncio.run(load_plugins())
 
 
@@ -1176,31 +652,19 @@ def plugin_enable(
 ) -> None:
     """Enable a specific plugin."""
     plugin_manager = get_plugin_manager()
-<<<<<<< HEAD
-
-=======
     
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
     async def enable_plugin():
         # Auto-load plugins if needed
         if not plugin_manager.list_plugins():
             await plugin_manager.load_all_plugins()
-<<<<<<< HEAD
-
-=======
             
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
         success = await plugin_manager.enable_plugin(name)
         if success:
             console.print(f"[green]✓[/green] Enabled plugin: {name}")
         else:
             console.print(f"[red]✗[/red] Failed to enable plugin: {name}")
             raise typer.Exit(1)
-<<<<<<< HEAD
-
-=======
     
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
     asyncio.run(enable_plugin())
 
 
@@ -1210,32 +674,20 @@ def plugin_disable(
 ) -> None:
     """Disable a specific plugin."""
     plugin_manager = get_plugin_manager()
-<<<<<<< HEAD
-
-=======
     
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
     async def disable_plugin():
         # Auto-load plugins if needed
         if not plugin_manager.list_plugins():
             await plugin_manager.load_all_plugins()
             await plugin_manager.enable_all_plugins()
-<<<<<<< HEAD
-
-=======
             
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
         success = await plugin_manager.disable_plugin(name)
         if success:
             console.print(f"[green]✓[/green] Disabled plugin: {name}")
         else:
             console.print(f"[red]✗[/red] Failed to disable plugin: {name}")
             raise typer.Exit(1)
-<<<<<<< HEAD
-
-=======
     
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
     asyncio.run(disable_plugin())
 
 
@@ -1245,11 +697,7 @@ def plugin_reload(
 ) -> None:
     """Reload a specific plugin."""
     plugin_manager = get_plugin_manager()
-<<<<<<< HEAD
-
-=======
     
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
     async def reload_plugin():
         success = await plugin_manager.reload_plugin(name)
         if success:
@@ -1257,11 +705,7 @@ def plugin_reload(
         else:
             console.print(f"[red]✗[/red] Failed to reload plugin: {name}")
             raise typer.Exit(1)
-<<<<<<< HEAD
-
-=======
     
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
     asyncio.run(reload_plugin())
 
 
@@ -1271,31 +715,13 @@ def plugin_info(
 ) -> None:
     """Show detailed information about a plugin."""
     plugin_manager = get_plugin_manager()
-<<<<<<< HEAD
-
-=======
     
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
     # Auto-load plugins if needed
     if not plugin_manager.list_plugins():
         async def auto_load():
             await plugin_manager.load_all_plugins()
             await plugin_manager.enable_all_plugins()
         asyncio.run(auto_load())
-<<<<<<< HEAD
-
-    if not plugin_manager.is_loaded(name):
-        console.print(f"[red]Plugin '{name}' is not loaded.[/red]")
-        raise typer.Exit(1)
-
-    info = plugin_manager.get_plugin_info(name)
-    plugin = plugin_manager.get_plugin(name)
-
-    if not info:
-        console.print(f"[red]No information available for plugin '{name}'.[/red]")
-        raise typer.Exit(1)
-
-=======
     
     if not plugin_manager.is_loaded(name):
         console.print(f"[red]Plugin '{name}' is not loaded.[/red]")
@@ -1308,7 +734,6 @@ def plugin_info(
         console.print(f"[red]No information available for plugin '{name}'.[/red]")
         raise typer.Exit(1)
     
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
     # Create info panel
     info_text = f"""[bold]Name:[/bold] {info.name}
 [bold]Version:[/bold] {info.version}
@@ -1318,18 +743,6 @@ def plugin_info(
 [bold]Status:[/bold] {"[green]Enabled[/green]" if plugin_manager.is_enabled(name) else "[red]Disabled[/red]"}
 [bold]API Version:[/bold] {info.api_version}
 """
-<<<<<<< HEAD
-
-    if info.website:
-        info_text += f"[bold]Website:[/bold] {info.website}\n"
-
-    if info.depends:
-        info_text += f"[bold]Dependencies:[/bold] {', '.join(info.depends)}\n"
-
-    if info.soft_depends:
-        info_text += f"[bold]Soft Dependencies:[/bold] {', '.join(info.soft_depends)}\n"
-
-=======
     
     if info.website:
         info_text += f"[bold]Website:[/bold] {info.website}\n"
@@ -1340,7 +753,6 @@ def plugin_info(
     if info.soft_depends:
         info_text += f"[bold]Soft Dependencies:[/bold] {', '.join(info.soft_depends)}\n"
     
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
     console.print(Panel(info_text, title=f"Plugin: {name}", expand=False))
 
 
@@ -1348,35 +760,21 @@ def plugin_info(
 def plugin_stats() -> None:
     """Show plugin system statistics."""
     plugin_manager = get_plugin_manager()
-<<<<<<< HEAD
-
-=======
     
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
     # Auto-load plugins if needed
     if not plugin_manager.list_plugins():
         async def auto_load():
             await plugin_manager.load_all_plugins()
             await plugin_manager.enable_all_plugins()
         asyncio.run(auto_load())
-<<<<<<< HEAD
-
-    stats = plugin_manager.get_plugin_stats()
-
-=======
     
     stats = plugin_manager.get_plugin_stats()
     
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
     stats_text = f"""[bold]Total Plugins:[/bold] {stats['total']}
 [bold]Enabled:[/bold] [green]{stats['enabled']}[/green]
 [bold]Disabled:[/bold] [red]{stats['disabled']}[/red]
 """
-<<<<<<< HEAD
-
-=======
     
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
     console.print(Panel(stats_text, title="Plugin Statistics", expand=False))
 
 
@@ -1385,26 +783,13 @@ def plugin_stats() -> None:
 def component_list() -> None:
     """List all loaded components."""
     component_manager = get_component_manager()
-<<<<<<< HEAD
-
-=======
     
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
     # Try to auto-load components if none are loaded
     if not component_manager.list_components():
         async def auto_load():
             await component_manager.load_all_components()
             await component_manager.enable_all_components()
         asyncio.run(auto_load())
-<<<<<<< HEAD
-
-    components = component_manager.list_components()
-
-    if not components:
-        console.print("[yellow]No components found. Run 'aetherius component load' first.[/yellow]")
-        return
-
-=======
     
     components = component_manager.list_components()
     
@@ -1412,7 +797,6 @@ def component_list() -> None:
         console.print("[yellow]No components found. Run 'aetherius component load' first.[/yellow]")
         return
     
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
     from rich.table import Table
     table = Table(title="Loaded Components")
     table.add_column("Name", style="cyan")
@@ -1420,24 +804,14 @@ def component_list() -> None:
     table.add_column("Status", style="green")
     table.add_column("Dependencies", style="yellow")
     table.add_column("Description", style="dim")
-<<<<<<< HEAD
-
-=======
     
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
     for component_name in components:
         info = component_manager.get_component_info(component_name)
         status = "Enabled" if component_manager.is_enabled(component_name) else "Disabled"
         status_style = "green" if component_manager.is_enabled(component_name) else "red"
-<<<<<<< HEAD
-
-        deps = ", ".join(info.depends) if info and info.depends else "None"
-
-=======
         
         deps = ", ".join(info.depends) if info and info.depends else "None"
         
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
         table.add_row(
             component_name,
             info.version if info else "Unknown",
@@ -1445,11 +819,7 @@ def component_list() -> None:
             deps,
             info.description if info else "No description"
         )
-<<<<<<< HEAD
-
-=======
     
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
     console.print(table)
 
 
@@ -1457,21 +827,13 @@ def component_list() -> None:
 def component_load() -> None:
     """Load all components from the components directory."""
     component_manager = get_component_manager()
-<<<<<<< HEAD
-
-=======
     
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
     async def load_components():
         console.print("[blue]Loading components...[/blue]")
         try:
             loaded = await component_manager.load_all_components()
             console.print(f"[green]✓[/green] Loaded {loaded} components")
-<<<<<<< HEAD
-
-=======
             
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
             # Also enable all loaded components
             if loaded > 0:
                 enabled = await component_manager.enable_all_components()
@@ -1479,11 +841,7 @@ def component_load() -> None:
         except ValueError as e:
             console.print(f"[red]✗[/red] Failed to load components: {e}")
             raise typer.Exit(1)
-<<<<<<< HEAD
-
-=======
     
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
     asyncio.run(load_components())
 
 
@@ -1493,31 +851,19 @@ def component_enable(
 ) -> None:
     """Enable a specific component."""
     component_manager = get_component_manager()
-<<<<<<< HEAD
-
-=======
     
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
     async def enable_component():
         # Auto-load components if needed
         if not component_manager.list_components():
             await component_manager.load_all_components()
-<<<<<<< HEAD
-
-=======
             
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
         success = await component_manager.enable_component(name)
         if success:
             console.print(f"[green]✓[/green] Enabled component: {name}")
         else:
             console.print(f"[red]✗[/red] Failed to enable component: {name}")
             raise typer.Exit(1)
-<<<<<<< HEAD
-
-=======
     
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
     asyncio.run(enable_component())
 
 
@@ -1527,32 +873,20 @@ def component_disable(
 ) -> None:
     """Disable a specific component."""
     component_manager = get_component_manager()
-<<<<<<< HEAD
-
-=======
     
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
     async def disable_component():
         # Auto-load components if needed
         if not component_manager.list_components():
             await component_manager.load_all_components()
             await component_manager.enable_all_components()
-<<<<<<< HEAD
-
-=======
             
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
         success = await component_manager.disable_component(name)
         if success:
             console.print(f"[green]✓[/green] Disabled component: {name}")
         else:
             console.print(f"[red]✗[/red] Failed to disable component: {name}")
             raise typer.Exit(1)
-<<<<<<< HEAD
-
-=======
     
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
     asyncio.run(disable_component())
 
 
@@ -1562,11 +896,7 @@ def component_reload(
 ) -> None:
     """Reload a specific component."""
     component_manager = get_component_manager()
-<<<<<<< HEAD
-
-=======
     
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
     async def reload_component():
         success = await component_manager.reload_component(name)
         if success:
@@ -1574,11 +904,7 @@ def component_reload(
         else:
             console.print(f"[red]✗[/red] Failed to reload component: {name}")
             raise typer.Exit(1)
-<<<<<<< HEAD
-
-=======
     
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
     asyncio.run(reload_component())
 
 
@@ -1588,31 +914,13 @@ def component_info(
 ) -> None:
     """Show detailed information about a component."""
     component_manager = get_component_manager()
-<<<<<<< HEAD
-
-=======
     
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
     # Auto-load components if needed
     if not component_manager.list_components():
         async def auto_load():
             await component_manager.load_all_components()
             await component_manager.enable_all_components()
         asyncio.run(auto_load())
-<<<<<<< HEAD
-
-    if not component_manager.is_loaded(name):
-        console.print(f"[red]Component '{name}' is not loaded.[/red]")
-        raise typer.Exit(1)
-
-    info = component_manager.get_component_info(name)
-    component = component_manager.get_component(name)
-
-    if not info:
-        console.print(f"[red]No information available for component '{name}'.[/red]")
-        raise typer.Exit(1)
-
-=======
     
     if not component_manager.is_loaded(name):
         console.print(f"[red]Component '{name}' is not loaded.[/red]")
@@ -1625,7 +933,6 @@ def component_info(
         console.print(f"[red]No information available for component '{name}'.[/red]")
         raise typer.Exit(1)
     
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
     # Create info panel
     info_text = f"""[bold]Name:[/bold] {info.name}
 [bold]Version:[/bold] {info.version}
@@ -1635,24 +942,6 @@ def component_info(
 [bold]Status:[/bold] {"[green]Enabled[/green]" if component_manager.is_enabled(name) else "[red]Disabled[/red]"}
 [bold]API Version:[/bold] {info.api_version}
 """
-<<<<<<< HEAD
-
-    if info.website:
-        info_text += f"[bold]Website:[/bold] {info.website}\n"
-
-    if info.depends:
-        info_text += f"[bold]Hard Dependencies:[/bold] {', '.join(info.depends)}\n"
-
-    if info.soft_depends:
-        info_text += f"[bold]Soft Dependencies:[/bold] {', '.join(info.soft_depends)}\n"
-
-    if info.load_before:
-        info_text += f"[bold]Load Before:[/bold] {', '.join(info.load_before)}\n"
-
-    if info.requires_packages:
-        info_text += f"[bold]Required Packages:[/bold] {', '.join(info.requires_packages)}\n"
-
-=======
     
     if info.website:
         info_text += f"[bold]Website:[/bold] {info.website}\n"
@@ -1669,7 +958,6 @@ def component_info(
     if info.requires_packages:
         info_text += f"[bold]Required Packages:[/bold] {', '.join(info.requires_packages)}\n"
     
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
     console.print(Panel(info_text, title=f"Component: {name}", expand=False))
 
 
@@ -1677,35 +965,21 @@ def component_info(
 def component_stats() -> None:
     """Show component system statistics."""
     component_manager = get_component_manager()
-<<<<<<< HEAD
-
-=======
     
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
     # Auto-load components if needed
     if not component_manager.list_components():
         async def auto_load():
             await component_manager.load_all_components()
             await component_manager.enable_all_components()
         asyncio.run(auto_load())
-<<<<<<< HEAD
-
-    stats = component_manager.get_component_stats()
-
-=======
     
     stats = component_manager.get_component_stats()
     
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
     stats_text = f"""[bold]Total Components:[/bold] {stats['total']}
 [bold]Enabled:[/bold] [green]{stats['enabled']}[/green]
 [bold]Disabled:[/bold] [red]{stats['disabled']}[/red]
 """
-<<<<<<< HEAD
-
-=======
     
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
     console.print(Panel(stats_text, title="Component Statistics", expand=False))
 
 
@@ -1719,19 +993,11 @@ def main(
         from .. import __version__
         console.print(f"Aetherius {__version__}")
         raise typer.Exit()
-<<<<<<< HEAD
-
-=======
     
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
     if ctx.invoked_subcommand is None:
         console.print("Use --help for usage information.")
         raise typer.Exit()
 
 
 if __name__ == "__main__":
-<<<<<<< HEAD
     app()
-=======
-    app()
->>>>>>> 3525cdf1073a036e878cce96c01e8240c5a28403
