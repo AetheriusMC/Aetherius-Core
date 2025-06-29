@@ -126,7 +126,7 @@ PLUGIN_INFO = PluginInfo(
 class MyPlugin(Plugin):
     async def on_enable(self):
         self.logger.info("Plugin enabled!")
-    
+
     @on_event(PlayerJoinEvent)
     async def on_player_join(self, event):
         self.logger.info(f"Player {event.player_name} joined!")
@@ -153,7 +153,7 @@ class MyComponent(Component):
     async def on_load(self):
         # Component loading logic
         pass
-    
+
     async def on_enable(self):
         # Component enable logic
         pass

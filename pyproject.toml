@@ -51,7 +51,7 @@ Repository = "https://github.com/AetheriusMC/Aetherius-Core"
 Issues = "https://github.com/AetheriusMC/Aetherius-Core/issues"
 
 [tool.ruff]
-target-version = "py311"
+target-version = "py312"
 line-length = 88
 select = [
     "E",  # pycodestyle errors
@@ -72,7 +72,7 @@ ignore = [
 "__init__.py" = ["F401"]
 
 [tool.black]
-target-version = ['py311']
+target-version = ['py312']
 line-length = 88
 include = '\.pyi?$'
 exclude = '''

@@ -203,3 +203,4 @@ htmlcov/
 # Development files
 *.orig
 *.rej
+components/ComponentWeb/

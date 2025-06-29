@@ -66,9 +66,13 @@ class InputHandler:
             text.append("_", style="white on blue")  # 光标
         else:
             # 在中间位置的光标
-            before_cursor = self.input_buffer[:self.cursor_position]
-            cursor_char = self.input_buffer[self.cursor_position] if self.cursor_position < len(self.input_buffer) else " "
-            after_cursor = self.input_buffer[self.cursor_position + 1:]
+            before_cursor = self.input_buffer[: self.cursor_position]
+            cursor_char = (
+                self.input_buffer[self.cursor_position]
+                if self.cursor_position < len(self.input_buffer)
+                else " "
+            )
+            after_cursor = self.input_buffer[self.cursor_position + 1 :]
 
             text.append(before_cursor, style="white")
             text.append(cursor_char, style="white on blue")
@@ -114,8 +118,8 @@ class InputHandler:
         elif ascii_code == 127 or ascii_code == 8:  # Backspace/Delete
             if self.cursor_position > 0:
                 self.input_buffer = (
-                    self.input_buffer[:self.cursor_position-1] +
-                    self.input_buffer[self.cursor_position:]
+                    self.input_buffer[: self.cursor_position - 1]
+                    + self.input_buffer[self.cursor_position :]
                 )
                 self.cursor_position -= 1
         elif ascii_code == 27:  # ESC序列（方向键等）
@@ -128,9 +132,9 @@ class InputHandler:
             raise EOFError()
         elif 32 <= ascii_code <= 126:  # 可打印字符
             self.input_buffer = (
-                self.input_buffer[:self.cursor_position] +
-                key +
-                self.input_buffer[self.cursor_position:]
+                self.input_buffer[: self.cursor_position]
+                + key
+                + self.input_buffer[self.cursor_position :]
             )
             self.cursor_position += 1
 

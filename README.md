@@ -1,38 +1,42 @@
-# Aetherius - Minecraft Server Management Engine
+# Aetherius Core - Minecraft Server Management Engine
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-A lightweight, high-performance Minecraft server management engine designed for stability, performance, and extensibility.
+一个轻量级、高性能的 Minecraft 服务器管理引擎，专为稳定性、性能和可扩展性而设计。
 
-## Features
+## ✨ 特性
 
-- **Lightweight & Fast**: Minimal resource usage with async I/O
-- **Stable**: Built for 24/7 operation with robust error handling
-- **Extensible**: Plugin and component system for custom functionality
-- **CLI-First**: Powerful command-line interface for server management
-- **Auto-Restart**: Automatic server restart on crashes
-- **Real-time Monitoring**: Live server output and detailed performance metrics
-- **Player Data Management**: Structured player information with helper plugin support
-- **Enhanced Configuration**: Unified configuration API with dot notation access
-- **Performance Monitoring**: Built-in CPU, memory, and resource monitoring
+### 🚀 核心功能
+- **轻量级高性能**: 异步 I/O 架构，最小资源占用
+- **企业级稳定性**: 为 24/7 运行设计，具备强大的错误处理
+- **高度可扩展**: 插件和组件系统支持自定义功能
+- **命令行优先**: 强大的 CLI 界面，支持脚本化管理
 
-## Installation
+### 🏗️ 核心架构
+- **依赖注入容器**: 支持单例、瞬态、作用域生命周期管理
+- **分层配置管理**: 多源配置、验证、热重载和模板渲染
+- **增强事件系统**: 异步事件处理、优先级队列和批量操作
+- **安全框架**: 认证、授权、审计和权限管理
+- **监控诊断**: 实时性能指标、健康检查和系统监控
+- **扩展系统**: 插件和组件热加载，支持生命周期管理
 
-### Requirements
+### 🔧 管理功能
+- **智能服务器管理**: 自动重启、崩溃恢复、性能监控
+- **实时控制台**: 双模式命令执行（直接/RCON），智能切换
+- **玩家数据管理**: 结构化数据存储，支持详细游戏信息
+- **Web 控制台**: 现代化 Web 界面，实时监控和管理
 
-- Python 3.11 or higher
-- Java 17 or higher (for Minecraft server)
-- A Minecraft server JAR file
+## 📦 安装
 
-### Install from PyPI (Coming Soon)
+### 系统要求
 
-```bash
-pip install aetherius
-```
+- Python 3.11 或更高版本
+- Java 17 或更高版本 (运行 Minecraft 服务器)
+- Minecraft 服务器 JAR 文件
 
-### Install from Source
+### 从源码安装
 
 ```bash
 git clone https://github.com/AetheriusMC/Aetherius-Core.git
@@ -40,140 +44,237 @@ cd Aetherius-Core
 pip install -e .
 ```
 
-## Quick Start
+## 🚀 快速开始
 
-1. **Setup your server**:
-   ```bash
-   mkdir server
-   # Place your server.jar in the server/ directory
-   cp /path/to/your/server.jar server/server.jar
-   ```
+### 1. 设置服务器
 
-2. **Start the server**:
-   ```bash
-   aetherius server start
-   ```
+```bash
+mkdir server
+# 将您的服务器 JAR 文件放到 server/ 目录
+cp /path/to/your/server.jar server/server.jar
+```
 
-3. **Check server status**:
-   ```bash
-   aetherius server status
-   ```
+### 2. 启动系统
 
-4. **Send commands to server**:
-   ```bash
-   aetherius cmd "say Hello World"
-   ```
+```bash
+# 开发模式启动
+python scripts/start.py
 
-5. **Interactive console**:
-   ```bash
-   aetherius console
-   ```
+# 或使用全局命令
+aetherius start
+```
 
-## CLI Commands
+### 3. 管理服务器
 
-### Server Management
+```bash
+# 查看系统状态
+aetherius status
 
-- `aetherius server start` - Start the Minecraft server
-- `aetherius server stop` - Stop the server gracefully
-- `aetherius server restart` - Restart the server
-- `aetherius server status` - Show server status
+# 启动 Web 控制台
+aetherius web
 
-### Server Interaction
+# 执行服务器命令
+aetherius cmd "say Hello World"
 
-- `aetherius cmd <command>` - Send command to server
-- `aetherius console` - Interactive console mode
+# 交互式控制台
+aetherius console
+```
 
-### Configuration
+## 📖 命令参考
 
-Configuration is managed through `config.yaml`:
+### 核心系统命令
+
+```bash
+aetherius start              # 启动 Aetherius Core
+aetherius web                # 启动 Web 控制台
+aetherius system info        # 显示系统信息
+aetherius system health      # 健康检查
+```
+
+### 服务器管理
+
+```bash
+aetherius stop               # 停止服务器
+aetherius restart            # 重启服务器
+aetherius status             # 服务器状态
+```
+
+### 配置管理
+
+```bash
+aetherius config show        # 显示当前配置
+aetherius config validate    # 验证配置
+aetherius config init        # 初始化默认配置
+```
+
+### 插件和组件
+
+```bash
+aetherius plugin list        # 列出插件
+aetherius plugin enable <name>    # 启用插件
+aetherius component list     # 列出组件
+aetherius component start <name>  # 启动组件
+```
+
+## ⚙️ 配置
+
+配置通过 `config/config.yaml` 文件管理：
 
 ```yaml
+# 服务器配置
 server:
   jar_path: server/server.jar
   java_executable: java
   java_args:
-    - -Xmx2G
-    - -Xms1G
-  server_args:
-    - --nogui
+    - -Xmx4G
+    - -Xms2G
+    - -XX:+UseG1GC
   working_directory: server
   auto_restart: true
   restart_delay: 5.0
 
+# 日志配置
 logging:
   level: INFO
   file_path: logs/aetherius.log
   console_output: true
+
+# 安全配置
+security:
+  enable_authentication: true
+  session_timeout: 3600
+  max_login_attempts: 5
+
+# 监控配置
+monitoring:
+  enable_metrics: true
+  health_check_interval: 30
+  performance_tracking: true
+
+# Web 控制台
+web:
+  enabled: true
+  host: localhost
+  port: 8080
+  enable_ssl: false
 ```
 
-## Architecture
+## 🏗️ 架构概览
 
-Aetherius Core consists of several key components:
+### 核心系统
 
-- **ServerProcessWrapper**: Manages the Minecraft server process with performance monitoring
-- **ConfigManager**: Enhanced configuration management with unified API
-- **PlayerDataManager**: Structured player data with helper plugin integration
-- **Event System**: Real-time event processing with async architecture
-- **Plugin System**: Extensible plugin architecture for custom functionality
-- **Component System**: Heavy-weight component system for official features
-- **CLI**: Full-featured command-line interface with rich output
-- **Enhanced API**: Extended functionality for official components
+- **AetheriusCore**: 主应用程序类，整合所有核心系统
+- **DependencyContainer**: 依赖注入容器，管理组件生命周期
+- **ConfigManager**: 分层配置管理，支持多源和热重载
+- **SecurityManager**: 安全框架，处理认证和授权
+- **ExtensionManager**: 扩展管理器，支持插件和组件
 
-## Development
+### 事件系统
 
-### Setup Development Environment
+- **EnhancedEventBus**: 高性能异步事件总线
+- **EventStore**: 事件存储和回放功能
+- **EventMetadata**: 事件元数据和优先级管理
+
+### 监控系统
+
+- **MonitoringContext**: 监控上下文管理
+- **MetricsCollector**: 性能指标收集
+- **HealthChecker**: 系统健康检查
+
+## 📁 目录结构
+
+```
+Aetherius-Core/
+├── bin/                    # 可执行脚本
+│   └── aetherius          # 主启动脚本
+├── scripts/               # 开发和部署脚本
+│   └── start.py          # 开发启动脚本
+├── docs/                  # 文档
+│   ├── api/              # API 文档
+│   ├── guides/           # 用户指南
+│   └── examples/         # 示例代码
+├── aetherius/            # 核心代码
+│   ├── core/             # 核心系统
+│   ├── cli/              # 命令行界面
+│   ├── api/              # API 接口
+│   └── plugins/          # 插件系统
+├── components/           # 官方组件
+│   └── ComponentWeb/     # Web 控制台组件
+├── config/               # 配置文件
+├── data/                 # 数据目录
+├── server/               # Minecraft 服务器
+└── tests/                # 测试代码
+```
+
+## 🔧 开发
+
+### 开发环境设置
 
 ```bash
 git clone https://github.com/AetheriusMC/Aetherius-Core.git
 cd Aetherius-Core
 pip install -e ".[dev]"
-pre-commit install
 ```
 
-### Running Tests
+### 代码质量
 
 ```bash
-pytest
+ruff check .          # 代码检查
+black .               # 代码格式化
+pytest                # 运行测试
 ```
 
-### Code Quality
+### 开发启动
 
 ```bash
-ruff check .
-black .
+# 使用开发启动脚本
+python scripts/start.py
+
+# 或直接运行应用
+python -m aetherius.core.application
 ```
 
-## Roadmap
+## 🗺️ 开发路线图
 
-### Phase 1 - Core Engine (Current)
+### ✅ 已完成 - Core Engine v2.0
+- 核心架构重构和优化
+- 依赖注入和配置管理系统
+- 增强事件系统和安全框架
+- 监控诊断和扩展系统
+- Web 控制台组件
 
-- [x] **Sprint 1**: Basic server process management and CLI
-- [x] **Sprint 2**: Log parsing and event system
-- [x] **Sprint 3**: Plugin system and basic extensibility
-- [x] **Sprint 4**: Complete CLI functionality and Alpha release
-- [x] **Enhanced APIs**: Performance monitoring, player data, unified configuration
+### 🚧 进行中 - 稳定性和优化
+- 性能优化和内存管理
+- 错误处理和日志系统
+- 单元测试和集成测试
+- 文档完善和用户指南
 
-### Future Phases
+### 🔮 计划中 - 高级功能
+- 多服务器管理
+- 云集成和自动扩展
+- 高级监控和告警
+- 社区插件市场
 
-- **Phase 2**: Web interface and dashboard
-- **Phase 3**: Advanced monitoring and metrics
-- **Phase 4**: Multi-server management
-- **Phase 5**: Cloud integration and scaling
+## 📚 文档
 
-## Contributing
+- [API 文档](docs/api/) - 详细的 API 参考
+- [用户指南](docs/guides/) - 使用教程和最佳实践
+- [示例代码](docs/examples/) - 实际使用示例
+- [架构文档](CLAUDE.md) - 系统架构和开发指南
 
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
+## 🤝 贡献
 
-## License
+我们欢迎各种形式的贡献！请查看 [贡献指南](CONTRIBUTING.md) 了解详情。
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+## 📄 许可证
 
-## Support
+本项目采用 MIT 许可证 - 详见 [LICENSE](LICENSE) 文件。
 
-- [Documentation](https://docs.aetherius.mc) (Coming Soon)
-- [Issue Tracker](https://github.com/AetheriusMC/Aetherius-Core/issues)
-- [Discord Server](https://discord.gg/aetherius) (Coming Soon)
+## 🆘 支持
+
+- [问题反馈](https://github.com/AetheriusMC/Aetherius-Core/issues)
+- [讨论区](https://github.com/AetheriusMC/Aetherius-Core/discussions)
 
 ---
 
-**Note**: This is an Alpha release (v0.1.0-alpha). Features and APIs may change before the stable release.
+**注意**: 这是 v2.0 版本，架构已完全重构，具备企业级稳定性和可扩展性。

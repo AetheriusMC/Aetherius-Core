@@ -1,557 +1,249 @@
-"""Server process wrapper for managing Minecraft server instances."""
+"""
+Server process controller for managing Minecraft server instances with a robust state machine.
+"""
 
 import asyncio
 import logging
-import signal
-import time
+from enum import Enum, auto
 from pathlib import Path
-from typing import Optional, Callable, Any, Dict
+from typing import Any, Optional
 
 import psutil
 
-from .config import ServerConfig
-from .log_parser import LogParser
-from .event_manager import get_event_manager, fire_event
-from .events import (
-    ServerStartingEvent, ServerStartedEvent, ServerStoppingEvent, 
-    ServerStoppedEvent, ServerCrashEvent
+from .config_models import ServerConfig
+from .event_manager import fire_event, get_event_manager
+from .events_base import (
+    ServerCrashEvent,
+    ServerLogEvent,
+    ServerStartedEvent,
+    ServerStateChangedEvent,
+    ServerStoppedEvent,
 )
-from .server_state import get_server_state
-from .command_queue import get_command_queue
-from .output_capture import get_output_capture
-
 
 logger = logging.getLogger(__name__)
 
 
-class ServerProcessWrapper:
+class ServerState(Enum):
+    """Represents the lifecycle state of the server."""
+
+    STOPPED = auto()
+    STARTING = auto()
+    RUNNING = auto()
+    STOPPING = auto()
+    CRASHED = auto()
+
+
+class ServerController:
     """
-    Manages a Minecraft server process with async I/O handling.
-    
-    This class provides the core functionality for starting, stopping,
-    and communicating with a Minecraft server process.
+    Manages a Minecraft server process using a robust asynchronous state machine.
+    This class handles starting, stopping, I/O, and health monitoring.
     """
-    
-    def __init__(self, config: ServerConfig, log_parser: Optional[LogParser] = None):
-        """Initialize the server process wrapper."""
+
+    def __init__(self, config: ServerConfig):
         self.config = config
         self.process: Optional[asyncio.subprocess.Process] = None
-        self._stdout_handler: Optional[Callable[[str], None]] = None
-        self._stderr_handler: Optional[Callable[[str], None]] = None
-        self._running = False
-        self._restart_requested = False
-        self._start_time: Optional[float] = None
-        self._psutil_process: Optional[psutil.Process] = None
-        
-        # Initialize log parser, state management, command queue, and output capture
-        self.log_parser = log_parser or LogParser()
+        self._state: ServerState = ServerState.STOPPED
+        self._tasks: list[asyncio.Task] = []
+        self._psutil_process: psutil.Process | None = None
         self.event_manager = get_event_manager()
-        self.server_state = get_server_state()
-        self.command_queue = get_command_queue()
-        self.output_capture = get_output_capture()
-    
+
     @property
-    def is_alive(self) -> bool:
-        """Check if the server process is currently running."""
-        # First check our local process
-        if self.process is not None and self.process.returncode is None:
-            return True
-        
-        # If no local process, check the global state
-        return self.server_state.is_server_running()
-    
-    @property
-    def is_running(self) -> bool:
-        """Check if the wrapper is in running state."""
-        return self._running
-    
-    def set_stdout_handler(self, handler: Callable[[str], None]) -> None:
-        """Set a handler function for stdout lines."""
-        self._stdout_handler = handler
-    
-    def set_stderr_handler(self, handler: Callable[[str], None]) -> None:
-        """Set a handler function for stderr lines."""
-        self._stderr_handler = handler
-    
+    def state(self) -> ServerState:
+        """Get the current state of the server."""
+        return self._state
+
+    def _change_state(self, new_state: ServerState):
+        """Atomically change the server state and fire an event."""
+        if self._state == new_state:
+            return
+
+        old_state = self._state
+        self._state = new_state
+        logger.info(f"Server state changed from {old_state.name} to {new_state.name}")
+        asyncio.create_task(
+            fire_event(
+                ServerStateChangedEvent(old_state=old_state, new_state=new_state)
+            )
+        )
+
     async def start(self) -> bool:
-        """
-        Start the Minecraft server process.
-        
-        Returns:
-            bool: True if started successfully, False otherwise
-        """
-        if self.is_alive:
-            logger.warning("Server process is already running")
+        """Start the Minecraft server process."""
+        if self.state not in [ServerState.STOPPED, ServerState.CRASHED]:
+            logger.warning(f"Cannot start server from state {self.state.name}")
             return False
-        
-        # Validate server JAR exists
+
+        self._change_state(ServerState.STARTING)
+
         jar_path = Path(self.config.jar_path)
         if not jar_path.exists():
             logger.error(f"Server JAR not found: {jar_path}")
+            self._change_state(ServerState.STOPPED)
             return False
-        
-        # Prepare command
+
         cmd = [
-            self.config.java_executable,
-            *self.config.java_args,
+            "java",
+            *self.config.jvm_args,
             "-jar",
             str(jar_path.resolve()),
-            *self.config.server_args
+            "--nogui",
         ]
-        
-        # Prepare working directory
-        work_dir = Path(self.config.working_directory)
-        work_dir.mkdir(parents=True, exist_ok=True)
-        
+        work_dir = jar_path.parent
+
         try:
-            logger.info(f"Starting server with command: {' '.join(cmd)}")
-            logger.info(f"Working directory: {work_dir.resolve()}")
-            
-            # Fire server starting event
-            starting_event = ServerStartingEvent(
-                command=cmd,
-                working_directory=str(work_dir.resolve())
-            )
-            await fire_event(starting_event)
-            
-            if starting_event.is_cancelled():
-                logger.info("Server start was cancelled by event handler")
-                return False
-            
-            self._start_time = asyncio.get_event_loop().time()
-            
             self.process = await asyncio.create_subprocess_exec(
                 *cmd,
                 stdin=asyncio.subprocess.PIPE,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
-                cwd=work_dir
+                cwd=work_dir,
             )
-            
-            self._running = True
-            
-            # Initialize psutil process for performance monitoring
-            try:
-                self._psutil_process = psutil.Process(self.process.pid)
-            except (psutil.NoSuchProcess, psutil.AccessDenied) as e:
-                logger.warning(f"Could not initialize psutil process monitoring: {e}")
-                self._psutil_process = None
-            
-            # Start I/O handling tasks
-            asyncio.create_task(self._handle_stdout())
-            asyncio.create_task(self._handle_stderr())
-            asyncio.create_task(self._monitor_process())
-            asyncio.create_task(self._handle_command_queue())
-            
-            # Save server state
-            self.server_state.set_server_started(
-                pid=self.process.pid,
-                jar_path=str(jar_path.resolve()),
-                working_directory=str(work_dir.resolve())
-            )
-            
+            self._psutil_process = psutil.Process(self.process.pid)
             logger.info(f"Server process started with PID: {self.process.pid}")
+
+            self._tasks.append(asyncio.create_task(self._read_stdout()))
+            self._tasks.append(asyncio.create_task(self._read_stderr()))
+            self._tasks.append(asyncio.create_task(self._monitor_process()))
+
+            # Transition to RUNNING state is handled by log parser or a timeout
+            # For now, we'll transition after a short delay for simplicity
+            await asyncio.sleep(1)  # Represents time waiting for "Done" log message
+            self._change_state(ServerState.RUNNING)
+            await fire_event(ServerStartedEvent(pid=self.process.pid))
             return True
-            
-        except Exception as e:
+
+        except (Exception, psutil.Error) as e:
             logger.error(f"Failed to start server process: {e}")
-            self.process = None
-            self._running = False
+            self._change_state(ServerState.CRASHED)
             return False
-    
-    async def stop(self, force: bool = False, timeout: float = 30.0) -> bool:
-        """
-        Stop the Minecraft server process.
-        
-        Args:
-            force: If True, force kill the process immediately
-            timeout: Seconds to wait for graceful shutdown before force kill
-            
-        Returns:
-            bool: True if stopped successfully, False otherwise
-        """
-        if not self.is_alive:
-            logger.warning("Server process is not running")
-            return True
-        
-        self._running = False
-        
-        # Fire server stopping event
-        stopping_event = ServerStoppingEvent(
-            reason="User requested" if not force else "Force stop",
-            force=force
-        )
-        await fire_event(stopping_event)
-        
+
+    async def stop(self, timeout: float = 30.0) -> bool:
+        """Stop the Minecraft server process gracefully."""
+        if self.state not in [ServerState.RUNNING, ServerState.STARTING]:
+            logger.warning(f"Cannot stop server from state {self.state.name}")
+            return False
+
+        self._change_state(ServerState.STOPPING)
+
         try:
-            if force:
-                logger.info("Force killing server process")
-                self.process.kill()
-            else:
-                logger.info("Sending stop command to server")
-                await self.send_command("stop")
-                
-                # Wait for graceful shutdown
-                try:
-                    await asyncio.wait_for(self.process.wait(), timeout=timeout)
-                    logger.info("Server stopped gracefully")
-                except asyncio.TimeoutError:
-                    logger.warning(f"Server didn't stop within {timeout}s, force killing")
-                    self.process.kill()
-                    await self.process.wait()
-            
-            # Calculate uptime
-            uptime = 0.0
-            if self._start_time:
-                uptime = asyncio.get_event_loop().time() - self._start_time
-            
-            # Fire server stopped event
-            stopped_event = ServerStoppedEvent(
-                exit_code=self.process.returncode or 0,
-                uptime=uptime
+            if self.process and self.process.stdin:
+                self.process.stdin.write(b"stop\n")
+                await self.process.stdin.drain()
+
+            await asyncio.wait_for(self.process.wait(), timeout=timeout)
+            logger.info("Server stopped gracefully.")
+
+        except asyncio.TimeoutError:
+            logger.warning(
+                f"Server did not stop gracefully within {timeout}s. Killing."
             )
-            await fire_event(stopped_event)
-            
-            # Clear server state
-            self.server_state.set_server_stopped()
-            
+            self.process.kill()
+            await self.process.wait()
+        except Exception as e:
+            logger.error(f"Error during graceful stop: {e}. Killing process.")
+            self.process.kill()
+            await self.process.wait()
+        finally:
+            await self._cleanup_tasks()
+            exit_code = self.process.returncode if self.process else -1
+            self._change_state(ServerState.STOPPED)
+            await fire_event(ServerStoppedEvent(exit_code=exit_code))
             self.process = None
             self._psutil_process = None
-            logger.info("Server process stopped")
-            return True
-            
-        except Exception as e:
-            logger.error(f"Error stopping server process: {e}")
-            return False
-    
-    async def restart(self) -> bool:
-        """
-        Restart the server process.
-        
-        Returns:
-            bool: True if restarted successfully, False otherwise
-        """
-        logger.info("Restarting server process")
-        self._restart_requested = True
-        
-        if self.is_alive:
-            await self.stop()
-        
-        # Wait a bit before restarting
-        await asyncio.sleep(self.config.restart_delay)
-        
-        return await self.start()
-    
+        return True
+
     async def send_command(self, command: str) -> bool:
-        """
-        Send a command to the server via stdin.
-        
-        Args:
-            command: The command to send
-            
-        Returns:
-            bool: True if sent successfully, False otherwise
-        """
-        if not self.is_alive or self.process.stdin is None:
-            logger.error("Cannot send command: server process not running or stdin not available")
+        """Send a command to the server's stdin."""
+        if (
+            self.state != ServerState.RUNNING
+            or not self.process
+            or not self.process.stdin
+        ):
+            logger.error(f"Cannot send command in state {self.state.name}")
             return False
-        
+
         try:
-            command_bytes = f"{command.strip()}\n".encode("utf-8")
+            command_bytes = f"{command.strip()}\n".encode()
             self.process.stdin.write(command_bytes)
             await self.process.stdin.drain()
             logger.debug(f"Sent command: {command}")
             return True
-            
-        except Exception as e:
-            logger.error(f"Error sending command '{command}': {e}")
+        except (BrokenPipeError, ConnectionResetError, OSError) as e:
+            logger.error(f"Failed to send command '{command}': {e}")
+            await self._handle_crash()
             return False
-    
-    async def _handle_stdout(self) -> None:
-        """Handle stdout from the server process."""
-        if self.process is None or self.process.stdout is None:
-            return
-        
-        try:
-            while self._running and not self.process.stdout.at_eof():
+
+    async def _read_stdout(self):
+        """Continuously read and process stdout from the server."""
+        while self.process and self.process.stdout and not self.process.stdout.at_eof():
+            try:
                 line_bytes = await self.process.stdout.readline()
                 if not line_bytes:
                     break
-                
-                line = line_bytes.decode("utf-8", errors="replace").rstrip()
+                line = line_bytes.decode("utf-8", errors="replace").strip()
                 if line:
-                    # Process line for output capture first
-                    try:
-                        self.output_capture.process_line(line)
-                    except Exception as e:
-                        logger.error(f"Error processing line for output capture: {e}")
-                    
-                    # Parse line and fire events
-                    try:
-                        events = self.log_parser.parse_line(line)
-                        for event in events:
-                            await fire_event(event)
-                            
-                            # Check for server started event
-                            if isinstance(event, ServerStartedEvent):
-                                if self._start_time:
-                                    event.startup_time = asyncio.get_event_loop().time() - self._start_time
-                                if self.process:
-                                    event.pid = self.process.pid
-                                
-                    except Exception as e:
-                        logger.error(f"Error parsing log line: {e}")
-                    
-                    # Call legacy stdout handler if set
-                    if self._stdout_handler:
-                        try:
-                            self._stdout_handler(line)
-                        except Exception as e:
-                            logger.error(f"Error in stdout handler: {e}")
-                        
-        except Exception as e:
-            logger.error(f"Error handling stdout: {e}")
-    
-    async def _handle_stderr(self) -> None:
-        """Handle stderr from the server process."""
-        if self.process is None or self.process.stderr is None:
-            return
-        
-        try:
-            while self._running and not self.process.stderr.at_eof():
+                    await fire_event(ServerLogEvent(level="INFO", message=line))
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logger.error(f"Error reading stdout: {e}")
+                break
+
+    async def _read_stderr(self):
+        """Continuously read and process stderr from the server."""
+        while self.process and self.process.stderr and not self.process.stderr.at_eof():
+            try:
                 line_bytes = await self.process.stderr.readline()
                 if not line_bytes:
                     break
-                
-                line = line_bytes.decode("utf-8", errors="replace").rstrip()
-                if line and self._stderr_handler:
-                    try:
-                        self._stderr_handler(line)
-                    except Exception as e:
-                        logger.error(f"Error in stderr handler: {e}")
-                        
-        except Exception as e:
-            logger.error(f"Error handling stderr: {e}")
-    
-    async def _monitor_process(self) -> None:
-        """Monitor the server process and handle crashes."""
-        if self.process is None:
+                line = line_bytes.decode("utf-8", errors="replace").strip()
+                if line:
+                    await fire_event(ServerLogEvent(level="ERROR", message=line))
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logger.error(f"Error reading stderr: {e}")
+                break
+
+    async def _monitor_process(self):
+        """Wait for the process to exit and handle the result."""
+        if not self.process:
             return
-        
+        exit_code = await self.process.wait()
+        logger.info(f"Server process exited with code: {exit_code}")
+
+        if self.state not in [ServerState.STOPPING, ServerState.STOPPED]:
+            await self._handle_crash(exit_code)
+
+    async def _handle_crash(self, exit_code: int = -1):
+        """Handle an unexpected server crash."""
+        self._change_state(ServerState.CRASHED)
+        await self._cleanup_tasks()
+        await fire_event(ServerCrashEvent(exit_code=exit_code))
+
+        # Optional: Implement auto-restart logic here
+        if self.config.auto_restart:
+            logger.info(f"Auto-restarting in {self.config.restart_delay} seconds...")
+            await asyncio.sleep(self.config.restart_delay)
+            await self.start()
+
+    async def _cleanup_tasks(self):
+        """Cancel and clean up all background tasks."""
+        for task in self._tasks:
+            if not task.done():
+                task.cancel()
+        await asyncio.gather(*self._tasks, return_exceptions=True)
+        self._tasks.clear()
+
+    def get_performance_metrics(self) -> dict[str, Any]:
+        """Get performance metrics using psutil."""
+        if not self._psutil_process or not self._psutil_process.is_running():
+            return {}
         try:
-            return_code = await self.process.wait()
-            logger.info(f"Server process exited with code: {return_code}")
-            
-            # Check if this was an unexpected crash
-            if self._running and not self._restart_requested:
-                logger.warning("Server process crashed unexpectedly")
-                
-                # Fire crash event
-                crash_event = ServerCrashEvent(
-                    exit_code=return_code,
-                    error_output="Server process exited unexpectedly",
-                    will_restart=self.config.auto_restart
-                )
-                await fire_event(crash_event)
-                
-                if self.config.auto_restart and not crash_event.is_cancelled():
-                    logger.info("Auto-restart is enabled, restarting server...")
-                    await asyncio.sleep(self.config.restart_delay)
-                    await self.start()
-            
-            self._restart_requested = False
-            
-        except Exception as e:
-            logger.error(f"Error monitoring server process: {e}")
-        finally:
-            if self._running:
-                self._running = False
-    
-    async def _handle_command_queue(self) -> None:
-        """Handle commands from the command queue."""
-        logger.info("Command queue handler started")
-        try:
-            while self._running:
-                try:
-                    # Process pending commands
-                    pending_commands = self.command_queue.get_pending_commands()
-                    
-                    if pending_commands:
-                        logger.info(f"Processing {len(pending_commands)} pending commands")
-                    
-                    for command_data in pending_commands:
-                        command_id = command_data['id']
-                        command = command_data['command']
-                        
-                        try:
-                            logger.info(f"Executing queued command: {command}")
-                            
-                            # Start output capture for this command
-                            self.output_capture.start_capture(command_id, command)
-                            
-                            # Execute the command
-                            success = await self.send_command(command)
-                            
-                            # Wait a bit for output to be captured
-                            await asyncio.sleep(0.5)
-                            
-                            # Finish capture and get output
-                            captured_output = self.output_capture.finish_capture(command_id)
-                            
-                            # Mark command as completed with output
-                            self.command_queue.mark_command_completed(
-                                command_id, 
-                                success,
-                                output=captured_output
-                            )
-                            
-                            if success:
-                                logger.info(f"Successfully executed queued command: {command}")
-                                if captured_output:
-                                    logger.debug(f"Command output: {captured_output}")
-                            else:
-                                logger.warning(f"Failed to execute queued command: {command}")
-                                
-                        except Exception as e:
-                            logger.error(f"Error executing queued command {command}: {e}")
-                            # Ensure capture is finished even on error
-                            self.output_capture.finish_capture(command_id)
-                            self.command_queue.mark_command_completed(command_id, False, str(e))
-                    
-                    # Clean up old files periodically
-                    self.command_queue.cleanup_old_files()
-                    
-                    # Wait before next check
-                    await asyncio.sleep(0.5)
-                    
-                except Exception as e:
-                    logger.error(f"Error in command queue processing loop: {e}")
-                    await asyncio.sleep(1.0)  # Wait longer on error
-                
-        except Exception as e:
-            logger.error(f"Fatal error in command queue handler: {e}")
-        finally:
-            logger.info("Command queue handler stopped")
-    
-    async def send_command_via_queue(self, command: str, timeout: float = 30.0) -> bool:
-        """
-        Send a command via the command queue (for cross-process communication).
-        
-        Args:
-            command: The command to send
-            timeout: Timeout in seconds
-            
-        Returns:
-            bool: True if sent successfully, False otherwise
-        """
-        try:
-            command_id = self.command_queue.add_command(command, timeout)
-            result = await self.command_queue.wait_for_completion(command_id, timeout)
-            
-            if result['status'] == 'completed':
-                return result['success']
-            else:
-                logger.error(f"Command execution failed: {result.get('error', 'Unknown error')}")
-                return False
-                
-        except Exception as e:
-            logger.error(f"Error sending command via queue: {e}")
-            return False
-    
-    async def get_performance_metrics(self) -> Dict[str, Any]:
-        """
-        Get detailed performance metrics for the server process.
-        
-        Returns:
-            Dict containing CPU usage, memory usage, and other performance data
-        """
-        if not self.is_alive or self._psutil_process is None:
-            return {
-                "cpu_percent": 0.0,
-                "memory_mb": 0.0,
-                "memory_percent": 0.0,
-                "threads": 0,
-                "open_files": 0,
-                "connections": 0,
-                "status": "not_running"
-            }
-        
-        try:
-            # Refresh process info
-            if not self._psutil_process.is_running():
+            with self._psutil_process.oneshot():
                 return {
-                    "cpu_percent": 0.0,
-                    "memory_mb": 0.0,
-                    "memory_percent": 0.0,
-                    "threads": 0,
-                    "open_files": 0,
-                    "connections": 0,
-                    "status": "not_running"
+                    "cpu_percent": self._psutil_process.cpu_percent(),
+                    "memory_mb": self._psutil_process.memory_info().rss / (1024 * 1024),
+                    "threads": self._psutil_process.num_threads(),
                 }
-            
-            # Get CPU usage (this call may block briefly)
-            cpu_percent = self._psutil_process.cpu_percent(interval=0.1)
-            
-            # Get memory info
-            memory_info = self._psutil_process.memory_info()
-            memory_mb = memory_info.rss / 1024 / 1024  # Convert bytes to MB
-            memory_percent = self._psutil_process.memory_percent()
-            
-            # Get thread count
-            try:
-                threads = self._psutil_process.num_threads()
-            except psutil.AccessDenied:
-                threads = 0
-            
-            # Get open files count
-            try:
-                open_files = len(self._psutil_process.open_files())
-            except (psutil.AccessDenied, psutil.NoSuchProcess):
-                open_files = 0
-            
-            # Get network connections count
-            try:
-                connections = len(self._psutil_process.connections())
-            except (psutil.AccessDenied, psutil.NoSuchProcess):
-                connections = 0
-            
-            # Get uptime
-            uptime = 0.0
-            if self._start_time:
-                uptime = time.time() - self._start_time
-            
-            return {
-                "cpu_percent": round(cpu_percent, 2),
-                "memory_mb": round(memory_mb, 2),
-                "memory_percent": round(memory_percent, 2),
-                "threads": threads,
-                "open_files": open_files,
-                "connections": connections,
-                "uptime_seconds": round(uptime, 1),
-                "status": "running",
-                "pid": self._psutil_process.pid
-            }
-            
-        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess) as e:
-            logger.warning(f"Error getting performance metrics: {e}")
-            return {
-                "cpu_percent": 0.0,
-                "memory_mb": 0.0,
-                "memory_percent": 0.0,
-                "threads": 0,
-                "open_files": 0,
-                "connections": 0,
-                "status": "error",
-                "error": str(e)
-            }
-    
-    def get_pid(self) -> Optional[int]:
-        """
-        Get the process ID of the server.
-        
-        Returns:
-            Process ID if running, None otherwise
-        """
-        if self.process:
-            return self.process.pid
-        return None
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            return {}
